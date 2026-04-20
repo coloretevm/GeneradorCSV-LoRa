@@ -17,8 +17,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.46"
-APP_BUILD_NAME = "Device_Manager_v46"
+APP_VERSION = "1.47"
+APP_BUILD_NAME = "Device_Manager_v47"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 DEFAULT_UPDATE_SETTINGS = {
     "manifest_url": "",
@@ -36,6 +36,48 @@ def _runtime_dir():
     if getattr(sys, "frozen", False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
+
+
+def _manuals_dir():
+    runtime_dir = os.path.join(_runtime_dir(), "manuali")
+    bundled_dir = _resource("manuali")
+    source_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manuali")
+    if os.path.isdir(runtime_dir):
+        return runtime_dir
+    if os.path.isdir(bundled_dir):
+        return bundled_dir
+    preferred = source_dir
+    os.makedirs(preferred, exist_ok=True)
+    return preferred
+
+
+def _list_manual_files(section=None):
+    allowed_ext = {".pdf", ".doc", ".docx", ".txt", ".zip"}
+    folder = _manuals_dir()
+    if section:
+        folder = os.path.join(folder, section)
+        os.makedirs(folder, exist_ok=True)
+    files = []
+    for name in sorted(os.listdir(folder), key=str.lower):
+        path = os.path.join(folder, name)
+        if name.lower() == "readme.txt":
+            continue
+        if os.path.isfile(path) and os.path.splitext(name)[1].lower() in allowed_ext:
+            files.append(path)
+    return files
+
+
+def _open_folder(path):
+    try:
+        if sys.platform.startswith("win"):
+            os.startfile(path)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
+        return True
+    except Exception:
+        return False
 
 
 def _update_settings_path():
@@ -347,6 +389,19 @@ TRANSLATIONS = {
         'serial_error_title': 'Error',
         'serial_error_missing': 'No se encontro el archivo:\n{filename}',
         'serial_save_title': 'Guardar Hyperterminal como...',
+        'manuals_title': 'Manuali',
+        'manuals_desc': 'Coloca aqui manuales PDF, DOC, DOCX, TXT o ZIP y la app te dejara guardarlos donde quieras.',
+        'manuals_section_files': 'Archivos manuales',
+        'manuals_open_folder': 'Abrir carpeta Manuali',
+        'manuals_refresh': 'Actualizar lista',
+        'manuals_empty': 'No hay manuales todavia. Copia tus archivos en la carpeta Manuali y pulsa actualizar.',
+        'manuals_empty_section': 'Todavia no hay manuales en esta seccion.',
+        'manuals_save_button': 'Guardar copia',
+        'manuals_status': 'Pestana Manuali lista.',
+        'manuals_status_saved': 'Manual guardado: {value}',
+        'manuals_status_opened': 'Carpeta Manuali abierta.',
+        'manuals_status_missing': 'No se encontro el manual seleccionado.',
+        'manuals_save_title': 'Guardar manual como...',
     },
     'en': {
         'csv_title':     'CSV Generator — LoRa Devices',
@@ -492,6 +547,19 @@ TRANSLATIONS = {
         'serial_error_title': 'Error',
         'serial_error_missing': 'File not found:\n{filename}',
         'serial_save_title': 'Save Hyperterminal as...',
+        'manuals_title': 'Manuals',
+        'manuals_desc': 'Place PDF, DOC, DOCX, TXT, or ZIP manuals here and the app will let you save them wherever you want.',
+        'manuals_section_files': 'Manual files',
+        'manuals_open_folder': 'Open Manuali folder',
+        'manuals_refresh': 'Refresh list',
+        'manuals_empty': 'There are no manuals yet. Copy your files into the Manuali folder and press refresh.',
+        'manuals_empty_section': 'There are no manuals in this section yet.',
+        'manuals_save_button': 'Save copy',
+        'manuals_status': 'Manuali tab ready.',
+        'manuals_status_saved': 'Manual saved: {value}',
+        'manuals_status_opened': 'Manuali folder opened.',
+        'manuals_status_missing': 'The selected manual was not found.',
+        'manuals_save_title': 'Save manual as...',
     },
     'it': {
         'csv_title':     'Generatore CSV — Dispositivi LoRa',
@@ -666,6 +734,19 @@ TRANSLATIONS = {
         'serial_error_title': 'Errore',
         'serial_error_missing': 'File non trovato:\n{filename}',
         'serial_save_title': 'Salva Hyperterminal come...',
+        'manuals_title': 'Manuali',
+        'manuals_desc': 'Metti qui manuali PDF, DOC, DOCX, TXT o ZIP e l app ti permettera di salvarli dove vuoi.',
+        'manuals_section_files': 'File manuali',
+        'manuals_open_folder': 'Apri cartella Manuali',
+        'manuals_refresh': 'Aggiorna elenco',
+        'manuals_empty': 'Non ci sono ancora manuali. Copia i file nella cartella Manuali e premi aggiorna.',
+        'manuals_empty_section': 'Non ci sono ancora manuali in questa sezione.',
+        'manuals_save_button': 'Salva copia',
+        'manuals_status': 'Scheda Manuali pronta.',
+        'manuals_status_saved': 'Manuale salvato: {value}',
+        'manuals_status_opened': 'Cartella Manuali aperta.',
+        'manuals_status_missing': 'Il manuale selezionato non e stato trovato.',
+        'manuals_save_title': 'Salva manuale come...',
     },
 }
 
@@ -3345,6 +3426,149 @@ class SerialTab(ctk.CTkScrollableFrame):
         self._status_lbl.configure(text=t("serial_status"))
 
 
+class ManualsTab(ctk.CTkScrollableFrame):
+    def __init__(self, master):
+        super().__init__(master, fg_color=("white", "#1e1e2e"), corner_radius=0, border_width=0, label_text="")
+        self._title_lbl = None
+        self._desc_lbl = None
+        self._section_lbl = None
+        self._list_card = None
+        self._list_container = None
+        self._status_lbl = None
+        self._build()
+        _lang_cbs.append(self._refresh_lang)
+
+    def _build(self):
+        self._title_lbl = ctk.CTkLabel(self, text=t("manuals_title"), font=ctk.CTkFont(size=18, weight="bold"))
+        self._title_lbl.pack(pady=(12, 6))
+
+        self._desc_lbl = ctk.CTkLabel(
+            self,
+            text=t("manuals_desc"),
+            text_color=C_HINT,
+            justify="left",
+            wraplength=900,
+        )
+        self._desc_lbl.pack(anchor="w", padx=18, pady=(0, 10))
+
+        bar = ctk.CTkFrame(self, fg_color=C_SEC_BG, corner_radius=6, height=30)
+        bar.pack(fill="x", padx=18, pady=(8, 4))
+        bar.pack_propagate(False)
+        self._section_lbl = ctk.CTkLabel(
+            bar,
+            text=t("manuals_section_files"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=C_SEC_TEXT,
+        )
+        self._section_lbl.pack(side="left", padx=12)
+
+        self._list_card = ctk.CTkFrame(self, corner_radius=10, fg_color=("white", "#16202d"))
+        self._list_card.pack(fill="x", padx=18, pady=(0, 10))
+
+        self._list_container = ctk.CTkFrame(self._list_card, fg_color="transparent")
+        self._list_container.pack(fill="x", padx=12, pady=12)
+
+        self._status_lbl = ctk.CTkLabel(self, text=t("manuals_status"), text_color=C_HINT)
+        self._status_lbl.pack(anchor="w", padx=18, pady=(4, 14))
+
+        self._populate_list()
+
+    def _populate_list(self):
+        for child in self._list_container.winfo_children():
+            child.destroy()
+
+        sections = ["RTU", "Gateway", "I-TIC", "TIC12"]
+        has_any_manual = any(_list_manual_files(section) for section in sections)
+        if not has_any_manual:
+            empty = ctk.CTkLabel(
+                self._list_container,
+                text=t("manuals_empty"),
+                text_color=C_HINT,
+                justify="left",
+                wraplength=860,
+            )
+            empty.pack(anchor="w", padx=4, pady=8)
+        for section_idx, section_name in enumerate(sections):
+            section_card = ctk.CTkFrame(self._list_container, corner_radius=10, fg_color=("white", "#1b2636"))
+            section_card.pack(fill="x", pady=(0, 10 if section_idx < len(sections) - 1 else 0))
+
+            header = ctk.CTkFrame(section_card, fg_color=C_SEC_BG, corner_radius=8, height=32)
+            header.pack(fill="x", padx=10, pady=(10, 8))
+            header.pack_propagate(False)
+            ctk.CTkLabel(
+                header,
+                text=section_name,
+                font=ctk.CTkFont(size=13, weight="bold"),
+                text_color=C_SEC_TEXT,
+            ).pack(side="left", padx=12)
+
+            body = ctk.CTkFrame(section_card, fg_color="transparent")
+            body.pack(fill="x", padx=12, pady=(0, 12))
+
+            manuals = _list_manual_files(section_name)
+            if not manuals:
+                ctk.CTkLabel(
+                    body,
+                    text=t("manuals_empty_section"),
+                    text_color=C_HINT,
+                    justify="left",
+                    wraplength=820,
+                ).pack(anchor="w", padx=4, pady=8)
+                continue
+
+            for idx, path in enumerate(manuals):
+                row = ctk.CTkFrame(body, fg_color="transparent")
+                row.pack(fill="x", pady=(0, 8 if idx < len(manuals) - 1 else 0))
+
+                info = ctk.CTkFrame(row, fg_color="transparent")
+                info.pack(side="left", fill="x", expand=True)
+
+                ctk.CTkLabel(
+                    info,
+                    text=os.path.basename(path),
+                    font=ctk.CTkFont(size=13, weight="bold"),
+                    anchor="w",
+                ).pack(anchor="w")
+
+                ctk.CTkButton(
+                    row,
+                    text=t("manuals_save_button"),
+                    width=150,
+                    command=lambda p=path: self._save_manual(p),
+                    font=ctk.CTkFont(size=12, weight="bold"),
+                ).pack(side="right", padx=(12, 0))
+
+                if idx < len(manuals) - 1:
+                    ctk.CTkFrame(body, height=1, fg_color=C_DIV).pack(fill="x", padx=4, pady=(0, 8))
+
+        self._status_lbl.configure(text=t("manuals_status"))
+
+    def _save_manual(self, source):
+        if not os.path.isfile(source):
+            self._status_lbl.configure(text=t("manuals_status_missing"))
+            messagebox.showerror(t("serial_error_title"), t("manuals_status_missing"))
+            self._populate_list()
+            return
+
+        target = filedialog.asksaveasfilename(
+            title=t("manuals_save_title"),
+            initialfile=os.path.basename(source),
+            defaultextension=os.path.splitext(source)[1],
+            filetypes=[("All files", "*.*")],
+        )
+        if not target:
+            return
+
+        shutil.copyfile(source, target)
+        self._status_lbl.configure(text=t("manuals_status_saved").format(value=os.path.basename(target)))
+
+    def _refresh_lang(self):
+        self._title_lbl.configure(text=t("manuals_title"))
+        self._desc_lbl.configure(text=t("manuals_desc"))
+        self._section_lbl.configure(text=t("manuals_section_files"))
+        self._populate_list()
+
+
 class App:
     def __init__(self, root: ctk.CTk):
         self.root = root
@@ -3390,10 +3614,11 @@ class App:
         T_ITIC  = "I-TIC"
         T_TIC12 = "TIC12"
         T_FW    = "FW Version"
+        T_MANUALI = "Manuali"
         T_SERIAL = "Serial"
         T_LANG  = "⚙  Language"
 
-        for name in (T_RTU, T_GW, T_ITIC, T_TIC12, T_FW, T_SERIAL, T_LANG):
+        for name in (T_RTU, T_GW, T_ITIC, T_TIC12, T_FW, T_MANUALI, T_SERIAL, T_LANG):
             self.tabview.add(name)
 
         # GW, I-TIC, TIC12 y FW Version directamente en la barra principal
@@ -3401,6 +3626,7 @@ class App:
         TICLabelTab(self.tabview.tab(T_ITIC),  product_name="I-TIC 1V", title_key="itic_title").pack(fill="both", expand=True)
         TICLabelTab(self.tabview.tab(T_TIC12), product_name="TIC12",    title_key="tic12_title").pack(fill="both", expand=True)
         FWVersionTab(self.tabview.tab(T_FW)).pack(fill="both", expand=True)
+        ManualsTab(self.tabview.tab(T_MANUALI)).pack(fill="both", expand=True)
         SerialTab(self.tabview.tab(T_SERIAL)).pack(fill="both", expand=True)
         LangTab(self.tabview.tab(T_LANG)).pack(fill="both", expand=True)
 

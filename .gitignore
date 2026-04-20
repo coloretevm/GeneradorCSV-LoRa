@@ -1,0 +1,6 @@
+__pycache__/
+build_pyinstaller/
+build_pyinstaller_clean/
+build_pyinstaller_full/
+dist/
+*.spec

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.47
+
+- Nueva pestana `Manuali` con secciones `RTU`, `Gateway`, `I-TIC` y `TIC12`.
+- Manuales, `fw`, `Hyperterminal.zip` y `APP_BLE_SERIAL__25_01_2026_wx.zip` integrados en la build oficial.
+- Interfaz de `Manuali` simplificada, dejando solo los botones de descarga.
+- Nueva build oficial publicada como `Device_Manager_v47.exe`.
+
 ## 1.46
 
 - Idioma por defecto cambiado de espanol a italiano al abrir el programa.
