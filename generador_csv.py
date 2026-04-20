@@ -160,6 +160,10 @@ def _find_tecnidro_logo_path():
             return path
     return None
 
+
+def _is_near_white(r, g, b, a, threshold=245):
+    return a < 30 or (r >= threshold and g >= threshold and b >= threshold)
+
 def _make_logo_images(display_h=52):
     """Carga logo.png a alta resolución y devuelve (img_light, img_dark).
     Trabaja en 2× para HiDPI y usa LANCZOS para suavizado óptimo.
@@ -215,8 +219,7 @@ def _make_black_logo_reader():
         src = Image.open(logo_path).convert("RGBA")
         black_pixels = []
         for r, g, b, a in src.getdata():
-            lum = 0.299 * r + 0.587 * g + 0.114 * b
-            if lum > 210 or a < 30:
+            if _is_near_white(r, g, b, a):
                 black_pixels.append((255, 255, 255, 0))
             else:
                 black_pixels.append((0, 0, 0, a))
@@ -232,6 +235,22 @@ def _make_black_logo_reader():
 # ═════════════════════════════════════════════════════════════════════════════
 # Traducciones
 # ═════════════════════════════════════════════════════════════════════════════
+def _make_logo_reader():
+    try:
+        from reportlab.lib.utils import ImageReader
+    except Exception:
+        return None
+
+    logo_path = _find_tecnidro_logo_path()
+    if not logo_path or not os.path.isfile(logo_path):
+        return None
+
+    try:
+        return ImageReader(logo_path)
+    except Exception:
+        return None
+
+
 TRANSLATIONS = {
     'es': {
         'csv_title':     'Generador de CSV — Dispositivos LoRa',
@@ -938,7 +957,7 @@ def _make_pdf(devices, output_path, include_bluetooth=True, rtu_header=False, lo
     FS_L=6.0; FS_NM=6.0; FS_SN=8.0; FS_DE=8.0
     FS_DA=8.0; FS_N=12.0; FS_BT=10.0; PAD=2.5
 
-    black_logo_reader = _make_black_logo_reader()
+    rtu_logo_reader = _make_logo_reader() or _make_black_logo_reader()
     qr_images = [_make_qr_image(dev['dev_eui']) for dev in devices]
     c = rl_canvas.Canvas(output_path, pagesize=A4)
     PER_PAGE = N_ROWS*N_COLS
@@ -970,9 +989,9 @@ def _make_pdf(devices, output_path, include_bluetooth=True, rtu_header=False, lo
             HDR_LOGO_W=CL; HDR_TEXT_W=LW-HDR_LOGO_W
             logo_x0=lx; text_cx=lx+HDR_LOGO_W+HDR_TEXT_W/2
             c.setLineWidth(0.5); c.line(xv, hdr_bot, xv, top)
-            if black_logo_reader:
+            if rtu_logo_reader:
                 logo_pad=3.0
-                c.drawImage(black_logo_reader, logo_x0+logo_pad, hdr_bot+logo_pad,
+                c.drawImage(rtu_logo_reader, logo_x0+logo_pad, hdr_bot+logo_pad,
                             HDR_LOGO_W-2*logo_pad, HEADER_H-2*logo_pad,
                             mask='auto', preserveAspectRatio=True, anchor='c')
             fs_rtu_title=HEADER_H*0.32
