@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.48
+
+- URL del manifest de actualizacion precargada por defecto en la aplicacion.
+- Ajuste del sistema de updates para evitar que vuelva a abrir la v47 al buscar actualizaciones.
+- Nueva build oficial publicada como `Device_Manager_v48.exe`.
+
 ## 1.47
 
 - Nueva pestana `Manuali` con secciones `RTU`, `Gateway`, `I-TIC` y `TIC12`.

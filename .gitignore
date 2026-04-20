@@ -3,5 +3,8 @@ build_pyinstaller/
 build_pyinstaller_clean/
 build_pyinstaller_full/
 build_pyinstaller_v47/
+build_pyinstaller_fix_updateurl/
+build_pyinstaller_v48/
 dist/
 *.spec
+downloads/update_settings.json
