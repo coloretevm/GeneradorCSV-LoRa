@@ -17,8 +17,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.43"
-APP_BUILD_NAME = "GeneradorCSV_LoRa_v43"
+APP_VERSION = "1.45"
+APP_BUILD_NAME = "Device_Manager_v45"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 DEFAULT_UPDATE_SETTINGS = {
     "manifest_url": "",
@@ -284,6 +284,11 @@ TRANSLATIONS = {
         'gw_output': 'Archivo PDF de salida:',
         'gw_generate': 'Generar PDF Gateway',
         'gw_ready': 'Listo para generar etiquetas GW.',
+        'gw_section_tools': 'Comandos Gateway',
+        'gw_shutdown_title': 'X4S LTE - Comando de apagado',
+        'gw_shutdown_desc': 'Copia el comando para spegnere los gateway X4S LTE.',
+        'gw_shutdown_copy': 'Copiar comando',
+        'gw_shutdown_copied': 'Comando X4S LTE copiado.',
         'gw_dialog_title': 'Gateway',
         'gw_field_model': 'MODEL',
         'gw_field_alias': 'Nombre Gateway / Alias',
@@ -328,6 +333,20 @@ TRANSLATIONS = {
         'fw_item_new': 'INSTANTANEO NUOVO',
         'fw_item_old_100l': 'INSTANTANEO VECCHIO 100L',
         'fw_item_old_1000l': 'INSTANTANEO VECCHIO 1000L',
+        'serial_title': 'Serial',
+        'serial_desc': 'Herramientas y archivos utiles para trabajo por serial.',
+        'serial_section_tools': 'Herramientas Serial',
+        'serial_hyperterminal_title': 'Hyperterminal',
+        'serial_hyperterminal_desc': 'Guarda el paquete ZIP de Hyperterminal donde quieras.',
+        'serial_hyperterminal_button': 'Guardar Hyperterminal',
+        'serial_terminal_antonio_title': 'Terminal Antonio (RTU Bluetooth e LORACONT)',
+        'serial_terminal_antonio_desc': 'Guarda el paquete ZIP de Terminal Antonio donde quieras.',
+        'serial_terminal_antonio_button': 'Guardar Terminal Antonio',
+        'serial_status': 'Pestana Serial lista.',
+        'serial_status_saved': 'Archivo guardado: {value}',
+        'serial_error_title': 'Error',
+        'serial_error_missing': 'No se encontro el archivo:\n{filename}',
+        'serial_save_title': 'Guardar Hyperterminal como...',
     },
     'en': {
         'csv_title':     'CSV Generator — LoRa Devices',
@@ -410,6 +429,11 @@ TRANSLATIONS = {
         'gw_output': 'Output PDF file:',
         'gw_generate': 'Generate Gateway PDF',
         'gw_ready': 'Ready to generate GW labels.',
+        'gw_section_tools': 'Gateway Commands',
+        'gw_shutdown_title': 'X4S LTE - Shutdown command',
+        'gw_shutdown_desc': 'Copy the command used to power off X4S LTE gateways.',
+        'gw_shutdown_copy': 'Copy command',
+        'gw_shutdown_copied': 'X4S LTE command copied.',
         'gw_dialog_title': 'Gateway',
         'gw_field_model': 'MODEL',
         'gw_field_alias': 'Gateway name / Alias',
@@ -454,6 +478,20 @@ TRANSLATIONS = {
         'fw_item_new': 'INSTANTANEO NUOVO',
         'fw_item_old_100l': 'INSTANTANEO VECCHIO 100L',
         'fw_item_old_1000l': 'INSTANTANEO VECCHIO 1000L',
+        'serial_title': 'Serial',
+        'serial_desc': 'Tools and useful files for serial work.',
+        'serial_section_tools': 'Serial Tools',
+        'serial_hyperterminal_title': 'Hyperterminal',
+        'serial_hyperterminal_desc': 'Save the Hyperterminal ZIP package wherever you want.',
+        'serial_hyperterminal_button': 'Save Hyperterminal',
+        'serial_terminal_antonio_title': 'Terminal Antonio (RTU Bluetooth and LORACONT)',
+        'serial_terminal_antonio_desc': 'Save the Terminal Antonio ZIP package wherever you want.',
+        'serial_terminal_antonio_button': 'Save Terminal Antonio',
+        'serial_status': 'Serial tab ready.',
+        'serial_status_saved': 'File saved: {value}',
+        'serial_error_title': 'Error',
+        'serial_error_missing': 'File not found:\n{filename}',
+        'serial_save_title': 'Save Hyperterminal as...',
     },
     'it': {
         'csv_title':     'Generatore CSV — Dispositivi LoRa',
@@ -565,6 +603,11 @@ TRANSLATIONS = {
         'gw_output': 'File PDF di output:',
         'gw_generate': 'Genera PDF Gateway',
         'gw_ready': 'Pronto per generare etichette GW.',
+        'gw_section_tools': 'Comandi Gateway',
+        'gw_shutdown_title': 'X4S LTE - Comando di spegnimento',
+        'gw_shutdown_desc': 'Copia il comando per spegnere i gateway X4S LTE.',
+        'gw_shutdown_copy': 'Copia comando',
+        'gw_shutdown_copied': 'Comando X4S LTE copiato.',
         'gw_dialog_title': 'Gateway',
         'gw_field_model': 'MODEL',
         'gw_field_alias': 'Nome gateway / Alias',
@@ -609,6 +652,20 @@ TRANSLATIONS = {
         'fw_item_new': 'INSTANTANEO NUOVO',
         'fw_item_old_100l': 'INSTANTANEO VECCHIO 100L',
         'fw_item_old_1000l': 'INSTANTANEO VECCHIO 1000L',
+        'serial_title': 'Serial',
+        'serial_desc': 'Strumenti e file utili per il lavoro seriale.',
+        'serial_section_tools': 'Strumenti Serial',
+        'serial_hyperterminal_title': 'Hyperterminal',
+        'serial_hyperterminal_desc': 'Salva il pacchetto ZIP di Hyperterminal dove vuoi.',
+        'serial_hyperterminal_button': 'Salva Hyperterminal',
+        'serial_terminal_antonio_title': 'Terminal Antonio (RTU Bluetooth e LORACONT)',
+        'serial_terminal_antonio_desc': 'Salva il pacchetto ZIP di Terminal Antonio dove vuoi.',
+        'serial_terminal_antonio_button': 'Salva Terminal Antonio',
+        'serial_status': 'Scheda Serial pronta.',
+        'serial_status_saved': 'File salvato: {value}',
+        'serial_error_title': 'Errore',
+        'serial_error_missing': 'File non trovato:\n{filename}',
+        'serial_save_title': 'Salva Hyperterminal come...',
     },
 }
 
@@ -2688,6 +2745,8 @@ class GatewayDialog(ctk.CTkToplevel):
 
 
 class GatewayTab(ctk.CTkScrollableFrame):
+    X4S_LTE_SHUTDOWN_CMD = "curl -s update.resiot.io/extra/armshipmodegwsolar.sh | bash"
+
     def __init__(self, master):
         super().__init__(master, fg_color=("white", "#1e1e2e"), corner_radius=0, border_width=0, label_text="")
         self._gateways = []
@@ -2709,6 +2768,32 @@ class GatewayTab(ctk.CTkScrollableFrame):
         )
         desc.pack(anchor="w", padx=18, pady=(0, 8))
         self._refs["gw_desc"] = desc
+
+        _sec(self, "gw_section_tools", self._refs)
+        self._gw_cmd_title = ctk.CTkLabel(
+            self,
+            text=t("gw_shutdown_title"),
+            font=ctk.CTkFont(size=13, weight="bold"),
+        )
+        self._gw_cmd_title.pack(anchor="w", padx=18, pady=(2, 2))
+
+        self._gw_cmd_desc = ctk.CTkLabel(
+            self,
+            text=t("gw_shutdown_desc"),
+            text_color=C_HINT,
+            justify="left",
+            wraplength=880,
+        )
+        self._gw_cmd_desc.pack(anchor="w", padx=18, pady=(0, 6))
+
+        self._gw_cmd_btn = ctk.CTkButton(
+            self,
+            text=t("gw_shutdown_copy"),
+            width=190,
+            command=self._copy_shutdown_command,
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._gw_cmd_btn.pack(anchor="w", padx=18, pady=(0, 10))
 
         _sec(self, "gw_section_list", self._refs)
         list_frame = _row(self)
@@ -2784,10 +2869,18 @@ class GatewayTab(ctk.CTkScrollableFrame):
     def _refresh_lang(self):
         for key, widget in self._refs.items():
             widget.configure(text=t(key[5:]) if key.startswith("_sec_") else t(key))
+        self._gw_cmd_title.configure(text=t("gw_shutdown_title"))
+        self._gw_cmd_desc.configure(text=t("gw_shutdown_desc"))
+        self._gw_cmd_btn.configure(text=t("gw_shutdown_copy"))
         total = len(self._gateways)
         pages = (total + 4) // 5 if total else 0
         self._count_lbl.configure(text=t("gw_count").format(total=total, pages=pages))
         self._status_lbl.configure(text=t("gw_ready"))
+
+    def _copy_shutdown_command(self):
+        self.clipboard_clear()
+        self.clipboard_append(self.X4S_LTE_SHUTDOWN_CMD)
+        self._status_lbl.configure(text=t("gw_shutdown_copied"))
 
     def _selected_index(self):
         selected = self.gateway_list.curselection()
@@ -3110,10 +3203,152 @@ class FWVersionTab(ctk.CTkScrollableFrame):
                 ctk.CTkFrame(card, height=1, fg_color=C_DIV).pack(fill="x", padx=12, pady=(0, 0))
 
 
+class SerialTab(ctk.CTkScrollableFrame):
+    PACKAGE_FILE = "Hyperterminal.zip"
+    TERMINAL_ANTONIO_FILE = "APP_BLE_SERIAL__25_01_2026_wx.zip"
+
+    def __init__(self, master):
+        super().__init__(master, fg_color=("white", "#1e1e2e"), corner_radius=0, border_width=0, label_text="")
+        self._title_lbl = None
+        self._desc_lbl = None
+        self._section_lbl = None
+        self._tool_title_lbl = None
+        self._tool_desc_lbl = None
+        self._save_btn = None
+        self._tool2_title_lbl = None
+        self._tool2_desc_lbl = None
+        self._save2_btn = None
+        self._status_lbl = None
+        self._build()
+        _lang_cbs.append(self._refresh_lang)
+
+    def _build(self):
+        self._title_lbl = ctk.CTkLabel(self, text=t("serial_title"), font=ctk.CTkFont(size=18, weight="bold"))
+        self._title_lbl.pack(pady=(12, 6))
+
+        self._desc_lbl = ctk.CTkLabel(
+            self,
+            text=t("serial_desc"),
+            text_color=C_HINT,
+            justify="left",
+            wraplength=900,
+        )
+        self._desc_lbl.pack(anchor="w", padx=18, pady=(0, 10))
+
+        bar = ctk.CTkFrame(self, fg_color=C_SEC_BG, corner_radius=6, height=30)
+        bar.pack(fill="x", padx=18, pady=(8, 4))
+        bar.pack_propagate(False)
+        self._section_lbl = ctk.CTkLabel(
+            bar,
+            text=t("serial_section_tools"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=C_SEC_TEXT,
+        )
+        self._section_lbl.pack(side="left", padx=12)
+
+        card = ctk.CTkFrame(self, corner_radius=10, fg_color=("white", "#16202d"))
+        card.pack(fill="x", padx=18, pady=(0, 10))
+
+        self._tool_title_lbl = ctk.CTkLabel(
+            card,
+            text=t("serial_hyperterminal_title"),
+            font=ctk.CTkFont(size=14, weight="bold"),
+            anchor="w",
+        )
+        self._tool_title_lbl.pack(anchor="w", padx=14, pady=(14, 4))
+
+        self._tool_desc_lbl = ctk.CTkLabel(
+            card,
+            text=t("serial_hyperterminal_desc"),
+            text_color=C_HINT,
+            justify="left",
+            wraplength=900,
+        )
+        self._tool_desc_lbl.pack(anchor="w", padx=14, pady=(0, 10))
+
+        self._save_btn = ctk.CTkButton(
+            card,
+            text=t("serial_hyperterminal_button"),
+            width=220,
+            command=self._save_hyperterminal,
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._save_btn.pack(anchor="w", padx=14, pady=(0, 14))
+
+        ctk.CTkFrame(card, height=1, fg_color=C_DIV).pack(fill="x", padx=12, pady=(0, 0))
+
+        self._tool2_title_lbl = ctk.CTkLabel(
+            card,
+            text=t("serial_terminal_antonio_title"),
+            font=ctk.CTkFont(size=14, weight="bold"),
+            anchor="w",
+        )
+        self._tool2_title_lbl.pack(anchor="w", padx=14, pady=(14, 4))
+
+        self._tool2_desc_lbl = ctk.CTkLabel(
+            card,
+            text=t("serial_terminal_antonio_desc"),
+            text_color=C_HINT,
+            justify="left",
+            wraplength=900,
+        )
+        self._tool2_desc_lbl.pack(anchor="w", padx=14, pady=(0, 10))
+
+        self._save2_btn = ctk.CTkButton(
+            card,
+            text=t("serial_terminal_antonio_button"),
+            width=260,
+            command=lambda: self._save_package(self.TERMINAL_ANTONIO_FILE),
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._save2_btn.pack(anchor="w", padx=14, pady=(0, 14))
+
+        self._status_lbl = ctk.CTkLabel(self, text=t("serial_status"), text_color=C_HINT)
+        self._status_lbl.pack(anchor="w", padx=18, pady=(4, 14))
+
+    def _save_package(self, filename):
+        source = _resource(filename)
+        if not os.path.isfile(source):
+            source = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+        if not os.path.isfile(source):
+            messagebox.showerror(
+                t("serial_error_title"),
+                t("serial_error_missing").format(filename=filename),
+            )
+            return
+
+        target = filedialog.asksaveasfilename(
+            title=t("serial_save_title"),
+            initialfile=filename,
+            defaultextension=".zip",
+            filetypes=[("ZIP", "*.zip"), ("All files", "*.*")],
+        )
+        if not target:
+            return
+
+        shutil.copyfile(source, target)
+        self._status_lbl.configure(text=t("serial_status_saved").format(value=os.path.basename(target)))
+
+    def _save_hyperterminal(self):
+        self._save_package(self.PACKAGE_FILE)
+
+    def _refresh_lang(self):
+        self._title_lbl.configure(text=t("serial_title"))
+        self._desc_lbl.configure(text=t("serial_desc"))
+        self._section_lbl.configure(text=t("serial_section_tools"))
+        self._tool_title_lbl.configure(text=t("serial_hyperterminal_title"))
+        self._tool_desc_lbl.configure(text=t("serial_hyperterminal_desc"))
+        self._save_btn.configure(text=t("serial_hyperterminal_button"))
+        self._tool2_title_lbl.configure(text=t("serial_terminal_antonio_title"))
+        self._tool2_desc_lbl.configure(text=t("serial_terminal_antonio_desc"))
+        self._save2_btn.configure(text=t("serial_terminal_antonio_button"))
+        self._status_lbl.configure(text=t("serial_status"))
+
+
 class App:
     def __init__(self, root: ctk.CTk):
         self.root = root
-        root.title("LoRa Device Manager — TECNIDRO")
+        root.title("Device Manager — TECNIDRO")
         # Centrar en pantalla al 90% del monitor disponible (máx 1200×960)
         root.update_idletasks()
         sw = root.winfo_screenwidth()
@@ -3129,10 +3364,10 @@ class App:
         hdr = ctk.CTkFrame(root, corner_radius=0, height=60, fg_color=C_HDR_BG)
         hdr.pack(fill="x")
         hdr.pack_propagate(False)
-        ctk.CTkLabel(hdr, text="  LoRa Device Manager",
+        ctk.CTkLabel(hdr, text="  Device Manager",
                      font=ctk.CTkFont(size=16, weight="bold"),
                      text_color=C_HDR_TEXT).pack(side="left", padx=16, pady=12)
-        ctk.CTkLabel(hdr, text="TECNIDRO srl",
+        ctk.CTkLabel(hdr, text="TECNIDRO SRL",
                      font=ctk.CTkFont(size=11),
                      text_color=C_HINT).pack(side="left")
 
@@ -3155,9 +3390,10 @@ class App:
         T_ITIC  = "I-TIC"
         T_TIC12 = "TIC12"
         T_FW    = "FW Version"
+        T_SERIAL = "Serial"
         T_LANG  = "⚙  Language"
 
-        for name in (T_RTU, T_GW, T_ITIC, T_TIC12, T_FW, T_LANG):
+        for name in (T_RTU, T_GW, T_ITIC, T_TIC12, T_FW, T_SERIAL, T_LANG):
             self.tabview.add(name)
 
         # GW, I-TIC, TIC12 y FW Version directamente en la barra principal
@@ -3165,18 +3401,19 @@ class App:
         TICLabelTab(self.tabview.tab(T_ITIC),  product_name="I-TIC 1V", title_key="itic_title").pack(fill="both", expand=True)
         TICLabelTab(self.tabview.tab(T_TIC12), product_name="TIC12",    title_key="tic12_title").pack(fill="both", expand=True)
         FWVersionTab(self.tabview.tab(T_FW)).pack(fill="both", expand=True)
+        SerialTab(self.tabview.tab(T_SERIAL)).pack(fill="both", expand=True)
         LangTab(self.tabview.tab(T_LANG)).pack(fill="both", expand=True)
 
         # ── Sub-tabview dentro de RTU: CSV | Etiquetas | JSON | Proyecto ──
         rtu_sub = ctk.CTkTabview(self.tabview.tab(T_RTU),
                                   corner_radius=6, border_width=0)
         rtu_sub.pack(fill="both", expand=True, padx=4, pady=4)
-        for sub in ("CSV", "Etichette", "JSON", "Proyecto"):
+        for sub in ("Proyecto", "CSV", "JSON", "Etichette"):
             rtu_sub.add(sub)
-        CSVTab(rtu_sub.tab("CSV")).pack(fill="both", expand=True)
-        EtichetteTab(rtu_sub.tab("Etichette")).pack(fill="both", expand=True)
-        JSONTab(rtu_sub.tab("JSON")).pack(fill="both", expand=True)
         ProjectTab(rtu_sub.tab("Proyecto")).pack(fill="both", expand=True)
+        CSVTab(rtu_sub.tab("CSV")).pack(fill="both", expand=True)
+        JSONTab(rtu_sub.tab("JSON")).pack(fill="both", expand=True)
+        EtichetteTab(rtu_sub.tab("Etichette")).pack(fill="both", expand=True)
 
         # ── Status bar ────────────────────────────────────────────
         bar = ctk.CTkFrame(root, corner_radius=0, height=24, fg_color=C_BAR_BG)

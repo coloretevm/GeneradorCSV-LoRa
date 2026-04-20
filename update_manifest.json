@@ -1,5 +1,5 @@
 {
-  "version": "1.43",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/GeneradorCSV_LoRa_v43.exe",
-  "notes": "Versione pubblicata automaticamente."
+  "version": "1.45",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v45.exe",
+  "notes": "Device Manager v1.45 con pestaña Serial, archivos ZIP integrados y mejoras recientes de GW/RTU."
 }

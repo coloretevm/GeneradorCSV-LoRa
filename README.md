@@ -4,20 +4,21 @@ Este repositorio contiene:
 
 - `generador_csv.py`: codigo fuente principal de la aplicacion.
 - `update_manifest.json`: manifiesto usado por la actualizacion automatica.
-- `downloads/GeneradorCSV_LoRa_v43.exe`: ejecutable oficial actual.
+- `downloads/Device_Manager_v45.exe`: ejecutable oficial actual.
 - `publish_update.bat`: script para publicar nuevas versiones.
 
 ## Version actual
 
-- `1.43`
+- `1.45`
 
-## Que corrige la 1.43
+## Que corrige la 1.45
 
-- Ajuste de etiquetas RTU con Bluetooth: una fila menos y centrado en A4.
-- Ajuste de etiquetas RTU sin Bluetooth: una fila menos y centrado en A4.
-- Ajuste de etiquetas RTU LORACONT: una fila menos y centrado en A4.
-- Correccion del logo de LORACONT para que salga en negro.
-- Ajuste de etiquetas RTU en tubo: una fila menos y centrado en A4.
+- Cambio de nombre a `Device Manager`.
+- Nueva pestaña `Serial` despues de `FW Version`.
+- Descarga de `Hyperterminal.zip` desde la pestaña `Serial`.
+- Descarga de `APP_BLE_SERIAL__25_01_2026_wx.zip` desde la pestaña `Serial`.
+- Comando de apagado para `X4S LTE` al inicio de la pestaña `GW`.
+- Publicacion del nuevo ejecutable `Device_Manager_v45.exe`.
 
 ## Actualizacion automatica
 
