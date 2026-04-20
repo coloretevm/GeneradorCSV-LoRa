@@ -4,21 +4,18 @@ Este repositorio contiene:
 
 - `generador_csv.py`: codigo fuente principal de la aplicacion.
 - `update_manifest.json`: manifiesto usado por la actualizacion automatica.
-- `downloads/Device_Manager_v45.exe`: ejecutable oficial actual.
+- `downloads/Device_Manager_v46.exe`: ejecutable oficial actual.
 - `publish_update.bat`: script para publicar nuevas versiones.
 
 ## Version actual
 
-- `1.45`
+- `1.46`
 
-## Que corrige la 1.45
+## Que corrige la 1.46
 
-- Cambio de nombre a `Device Manager`.
-- Nueva pestaña `Serial` despues de `FW Version`.
-- Descarga de `Hyperterminal.zip` desde la pestaña `Serial`.
-- Descarga de `APP_BLE_SERIAL__25_01_2026_wx.zip` desde la pestaña `Serial`.
-- Comando de apagado para `X4S LTE` al inicio de la pestaña `GW`.
-- Publicacion del nuevo ejecutable `Device_Manager_v45.exe`.
+- Idioma por defecto cambiado a italiano.
+- Publicacion del nuevo ejecutable `Device_Manager_v46.exe`.
+- Codigo Python y manifiesto de actualizacion alineados con la version 1.46.
 
 ## Actualizacion automatica
 

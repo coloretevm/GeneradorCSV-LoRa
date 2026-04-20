@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.46
+
+- Idioma por defecto cambiado de espanol a italiano al abrir el programa.
+- Nueva build oficial publicada como `Device_Manager_v46.exe`.
+- Codigo Python y manifiesto de actualizacion sincronizados con la version 1.46.
+
 ## 1.45
 
 - Cambio de nombre visual y de build a `Device Manager`.

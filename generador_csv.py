@@ -17,8 +17,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.45"
-APP_BUILD_NAME = "Device_Manager_v45"
+APP_VERSION = "1.46"
+APP_BUILD_NAME = "Device_Manager_v46"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 DEFAULT_UPDATE_SETTINGS = {
     "manifest_url": "",
@@ -669,7 +669,7 @@ TRANSLATIONS = {
     },
 }
 
-_cur_lang = ['es']
+_cur_lang = ['it']
 _lang_cbs = []
 
 def t(key):

@@ -1,5 +1,5 @@
 {
-  "version": "1.45",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v45.exe",
-  "notes": "Device Manager v1.45 con pestaña Serial, archivos ZIP integrados y mejoras recientes de GW/RTU."
+  "version": "1.46",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v46.exe",
+  "notes": "Device Manager v1.46 con italiano por defecto y publicacion completa de la nueva build."
 }
