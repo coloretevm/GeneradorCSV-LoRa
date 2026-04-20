@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.49
+
+- La actualizacion ahora descarga la nueva version con ventana `Guardar como...` en lugar de intentar reemplazar el exe en uso.
+- Nueva build oficial preparada como `Device_Manager_v49.exe`.
+
 ## 1.48
 
 - URL del manifest de actualizacion precargada por defecto en la aplicacion.

@@ -17,8 +17,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.48"
-APP_BUILD_NAME = "Device_Manager_v48"
+APP_VERSION = "1.49"
+APP_BUILD_NAME = "Device_Manager_v49"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 DEFAULT_MANIFEST_URL = "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/update_manifest.json"
 DEFAULT_UPDATE_SETTINGS = {
@@ -823,18 +823,6 @@ def check_for_updates(parent, interactive=True, status_cb=None):
         return False
 
     try:
-        if getattr(sys, "frozen", False):
-            current_exe = sys.executable
-            temp_name = os.path.basename(download_url) or f"{APP_BUILD_NAME}_{latest_version}.exe"
-            downloaded_exe = os.path.join(tempfile.gettempdir(), temp_name)
-            _download_binary(download_url, downloaded_exe)
-            _launch_windows_updater(downloaded_exe, current_exe)
-            if status_cb:
-                status_cb(t("upd_success_restart"))
-            messagebox.showinfo(t("upd_title"), t("upd_success_restart"), parent=parent)
-            parent.after(300, parent.destroy)
-            return True
-
         target = filedialog.asksaveasfilename(
             parent=parent,
             title=t("upd_download_title"),

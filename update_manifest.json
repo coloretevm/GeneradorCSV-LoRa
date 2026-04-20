@@ -1,5 +1,5 @@
 {
-  "version": "1.48",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v48.exe",
-  "notes": "Device Manager v1.48 con URL del manifest precargada y actualizador alineado con la build oficial."
+  "version": "1.49",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v49.exe",
+  "notes": "Device Manager v1.49 con actualizacion por Guardar como para descargar el nuevo exe sin reemplazo automatico."
 }
