@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.50
+
+- Corregida la carga del logo Tecnidro en las etiquetas `TIC12` e `I-TIC`.
+- Añadido respaldo automatico entre `logo.png` y `gw_logo_tecnidro.png`.
+- Nueva build oficial preparada como `Device_Manager_v50.exe`.
+
 ## 1.49
 
 - La actualizacion ahora descarga la nueva version con ventana `Guardar como...` en lugar de intentar reemplazar el exe en uso.

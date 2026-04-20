@@ -17,8 +17,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.49"
-APP_BUILD_NAME = "Device_Manager_v49"
+APP_VERSION = "1.50"
+APP_BUILD_NAME = "Device_Manager_v50"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 DEFAULT_MANIFEST_URL = "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/update_manifest.json"
 DEFAULT_UPDATE_SETTINGS = {
@@ -153,6 +153,13 @@ def _launch_windows_updater(downloaded_exe, current_exe):
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     subprocess.Popen(["cmd", "/c", bat_path], creationflags=creation_flags)
 
+def _find_tecnidro_logo_path():
+    for filename in ("logo.png", "gw_logo_tecnidro.png"):
+        path = _resource(filename)
+        if os.path.isfile(path):
+            return path
+    return None
+
 def _make_logo_images(display_h=52):
     """Carga logo.png a alta resolución y devuelve (img_light, img_dark).
     Trabaja en 2× para HiDPI y usa LANCZOS para suavizado óptimo.
@@ -160,7 +167,10 @@ def _make_logo_images(display_h=52):
     Dark:  mismos pixels recoloreados a blanco puro, fondo transparente.
     """
     try:
-        src = Image.open(_resource("logo.png")).convert("RGBA")
+        logo_path = _find_tecnidro_logo_path()
+        if not logo_path:
+            return None, None, 0, 0
+        src = Image.open(logo_path).convert("RGBA")
         # Escalar a 2× resolución interna para HiDPI (CTkImage lo gestiona)
         w, h = src.size
         render_h = display_h * 2
@@ -197,8 +207,8 @@ def _make_black_logo_reader():
 
     import io
 
-    logo_path = _resource("logo.png")
-    if not os.path.isfile(logo_path):
+    logo_path = _find_tecnidro_logo_path()
+    if not logo_path or not os.path.isfile(logo_path):
         return None
 
     try:
@@ -1729,8 +1739,8 @@ def _make_tic_pdf(labels, output_path, product_name):
 
     # ── Prepare black version of logo for labels ─────────────────
     logo_reader = None
-    logo_path   = _resource("logo.png")
-    if os.path.isfile(logo_path):
+    logo_path = _find_tecnidro_logo_path()
+    if logo_path and os.path.isfile(logo_path):
         try:
             src = Image.open(logo_path).convert("RGBA")
             px  = list(src.getdata())
