@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.54
+
+- Aggiunto `GW` al registro seriali condiviso su GitHub.
+- Nella scheda `Gateway` c e ora il pulsante per usare il prossimo seriale GitHub quando aggiungi un nuovo gateway.
+- Alla generazione del PDF Gateway il programma controlla seriali numerici, evita duplicati e aggiorna l ultimo seriale `GW` nel registro.
+- Nuova build ufficiale pubblicata come `Device_Manager_v54.exe`.
+
 ## 1.53
 
 - URL del manifest GitHub integrata di default dentro l applicazione.

@@ -17,8 +17,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.53"
-APP_BUILD_NAME = "Device_Manager_v53"
+APP_VERSION = "1.54"
+APP_BUILD_NAME = "Device_Manager_v54"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
 DEFAULT_UPDATE_SETTINGS = {
@@ -31,9 +31,10 @@ DEFAULT_SERIAL_SETTINGS = {
     "registry_file": "serial_registry.json",
     "station_name": os.environ.get("COMPUTERNAME", "PC"),
 }
-SERIAL_FAMILY_ORDER = ("RTU", "I-TIC", "TIC12")
+SERIAL_FAMILY_ORDER = ("RTU", "GW", "I-TIC", "TIC12")
 SERIAL_FAMILY_SETTINGS = {
     "RTU": {"entry_key": "serial_family_rtu", "number_width": 5},
+    "GW": {"entry_key": "serial_family_gw", "number_width": 1},
     "I-TIC": {"entry_key": "serial_family_itic", "number_width": 4},
     "TIC12": {"entry_key": "serial_family_tic12", "number_width": 4},
 }
@@ -261,6 +262,48 @@ def _serial_registry_update_last(settings, family, start, end, year, count):
         settings,
         registry,
         f"Update serial registry: {family} {entry['last_range']}/{year}",
+    )
+
+
+def _serial_registry_update_gateways(settings, serial_values, year):
+    if "GW" not in SERIAL_FAMILY_ORDER:
+        raise ValueError("Unknown family: GW")
+    if not serial_values:
+        raise ValueError("No gateway serials provided.")
+
+    cleaned = [int(value) for value in serial_values]
+    if len(set(cleaned)) != len(cleaned):
+        raise ValueError(t("gw_error_serial_duplicate"))
+
+    registry = _serial_registry_pull(settings)
+    entry = registry["families"]["GW"]
+    current_last = int(entry.get("last_serial", 0) or 0)
+    lowest = min(cleaned)
+    highest = max(cleaned)
+    if lowest <= current_last:
+        raise ValueError(
+            t("serial_repo_error_overlap").format(
+                family=_serial_family_name("GW"),
+                current=current_last,
+                requested=lowest,
+            )
+        )
+
+    station = str(settings.get("station_name", "")).strip() or DEFAULT_SERIAL_SETTINGS["station_name"]
+    width = max(SERIAL_FAMILY_SETTINGS["GW"]["number_width"], len(str(highest)))
+    entry.update({
+        "last_serial": int(highest),
+        "updated_at": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+        "updated_by": station,
+        "last_count": len(cleaned),
+        "last_range": f"{lowest:0{width}d}-{highest:0{width}d}",
+        "last_year": str(year),
+    })
+    registry["families"]["GW"] = entry
+    return _serial_registry_push(
+        settings,
+        registry,
+        f"Update serial registry: GW {entry['last_range']}/{year}",
     )
 
 
@@ -500,6 +543,8 @@ TRANSLATIONS = {
         'gw_status_generating': 'Generando PDF Gateway...',
         'gw_status_done': 'OK  {total} etiquetas GW -> {name}',
         'gw_status_error': 'Error al generar el PDF Gateway.',
+        'gw_error_serial_numeric': 'El serial del gateway #{index} debe ser numerico para actualizar el registro GitHub. Valor actual: {value}',
+        'gw_error_serial_duplicate': 'Hay seriales GW repetidos en la lista. Revisa los valores antes de generar el PDF.',
         'gw_pdf_ok': 'PDF Gateway generado correctamente.\n\nEtiquetas: {total}\nHojas A4: {pages}\n\nArchivo:\n{path}',
         'fw_title': 'FW Version',
         'fw_desc': 'Boton PIC: copia el nombre del microcontrolador. Boton firmware: guarda el archivo HEX donde quieras.',
@@ -563,6 +608,7 @@ TRANSLATIONS = {
         'serial_next_status': '{family}: siguiente serial sugerido {value}',
         'serial_repo_reserved': 'Registro GitHub actualizado para {family}: {start} - {end}/{year}',
         'serial_family_rtu': 'RTU',
+        'serial_family_gw': 'GW',
         'serial_family_itic': 'I-TIC',
         'serial_family_tic12': 'TIC12',
     },
@@ -669,6 +715,8 @@ TRANSLATIONS = {
         'gw_status_generating': 'Generating Gateway PDF...',
         'gw_status_done': 'OK  {total} GW labels -> {name}',
         'gw_status_error': 'Error while generating the Gateway PDF.',
+        'gw_error_serial_numeric': 'Gateway serial #{index} must be numeric to update the GitHub registry. Current value: {value}',
+        'gw_error_serial_duplicate': 'There are duplicated GW serials in the list. Review the values before generating the PDF.',
         'gw_pdf_ok': 'Gateway PDF generated successfully.\n\nLabels: {total}\nA4 pages: {pages}\n\nFile:\n{path}',
         'fw_title': 'FW Version',
         'fw_desc': 'PIC button: copies the microcontroller name. Firmware button: saves the HEX file wherever you want.',
@@ -732,6 +780,7 @@ TRANSLATIONS = {
         'serial_next_status': '{family}: next suggested serial {value}',
         'serial_repo_reserved': 'GitHub registry updated for {family}: {start} - {end}/{year}',
         'serial_family_rtu': 'RTU',
+        'serial_family_gw': 'GW',
         'serial_family_itic': 'I-TIC',
         'serial_family_tic12': 'TIC12',
     },
@@ -867,6 +916,8 @@ TRANSLATIONS = {
         'gw_status_generating': 'Generazione PDF Gateway...',
         'gw_status_done': 'OK  {total} etichette GW -> {name}',
         'gw_status_error': 'Errore durante la generazione del PDF Gateway.',
+        'gw_error_serial_numeric': 'Il seriale del gateway #{index} deve essere numerico per aggiornare il registro GitHub. Valore attuale: {value}',
+        'gw_error_serial_duplicate': 'Ci sono seriali GW duplicati nella lista. Controlla i valori prima di generare il PDF.',
         'gw_pdf_ok': 'PDF Gateway generato correttamente.\n\nEtichette: {total}\nPagine A4: {pages}\n\nFile:\n{path}',
         'fw_title': 'FW Version',
         'fw_desc': 'Pulsante PIC: copia il nome del microcontrollore. Pulsante firmware: salva il file HEX dove vuoi.',
@@ -930,6 +981,7 @@ TRANSLATIONS = {
         'serial_next_status': '{family}: prossimo seriale suggerito {value}',
         'serial_repo_reserved': 'Registro GitHub aggiornato per {family}: {start} - {end}/{year}',
         'serial_family_rtu': 'RTU',
+        'serial_family_gw': 'GW',
         'serial_family_itic': 'I-TIC',
         'serial_family_tic12': 'TIC12',
     },
@@ -3079,7 +3131,7 @@ def _make_gateway_pdf(gateways, output_path, serial_year):
 
 
 class GatewayDialog(ctk.CTkToplevel):
-    def __init__(self, parent, gateway=None):
+    def __init__(self, parent, gateway=None, initial_serial=""):
         super().__init__(parent)
         self.title(t("gw_dialog_title"))
         self.resizable(False, False)
@@ -3094,7 +3146,7 @@ class GatewayDialog(ctk.CTkToplevel):
         fields = [
             (t("gw_field_model"), gateway.get("model", "") if gateway else ""),
             (t("gw_field_alias"), gateway.get("alias", "") if gateway else ""),
-            (t("gw_field_serial"), gateway.get("serial", "") if gateway else ""),
+            (t("gw_field_serial"), gateway.get("serial", "") if gateway else initial_serial),
             (t("gw_field_mac"), gateway.get("mac", "") if gateway else ""),
             (t("gw_field_deveui"), gateway.get("dev_eui", "") if gateway else ""),
         ]
@@ -3153,6 +3205,7 @@ class GatewayTab(ctk.CTkScrollableFrame):
         super().__init__(master, fg_color=("white", "#1e1e2e"), corner_radius=0, border_width=0, label_text="")
         self._gateways = []
         self._refs = {}
+        self._next_serial_btn = None
         self._build()
         _lang_cbs.append(self._refresh_lang)
 
@@ -3234,6 +3287,14 @@ class GatewayTab(ctk.CTkScrollableFrame):
         self._refs["gw_year"] = lbl_year
         self.serial_year_var = tk.StringVar(value=str(datetime.now().year))
         ctk.CTkEntry(year_row, textvariable=self.serial_year_var, width=120).pack(side="left", padx=(4, 0))
+        self._next_serial_btn = ctk.CTkButton(
+            year_row,
+            text=t("serial_next_button"),
+            width=220,
+            command=self._add_gateway_with_next_serial,
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._next_serial_btn.pack(side="left", padx=(10, 0))
 
         _div(self)
         output_row = _row(self)
@@ -3274,6 +3335,8 @@ class GatewayTab(ctk.CTkScrollableFrame):
         self._gw_cmd_title.configure(text=t("gw_shutdown_title"))
         self._gw_cmd_desc.configure(text=t("gw_shutdown_desc"))
         self._gw_cmd_btn.configure(text=t("gw_shutdown_copy"))
+        if self._next_serial_btn is not None:
+            self._next_serial_btn.configure(text=t("serial_next_button"))
         total = len(self._gateways)
         pages = (total + 4) // 5 if total else 0
         self._count_lbl.configure(text=t("gw_count").format(total=total, pages=pages))
@@ -3296,6 +3359,42 @@ class GatewayTab(ctk.CTkScrollableFrame):
         if dlg.result:
             self._gateways.append(dlg.result)
             self._refresh_list()
+
+    def _add_gateway_with_next_serial(self):
+        try:
+            initial_serial = self._next_gateway_serial()
+        except Exception as exc:
+            messagebox.showerror(t("serial_error_title"), str(exc))
+            return
+        dlg = GatewayDialog(self, initial_serial=initial_serial)
+        self.wait_window(dlg)
+        if dlg.result:
+            self._gateways.append(dlg.result)
+            self._refresh_list()
+
+    def _gateway_serial_numbers(self):
+        serials = []
+        for idx, gateway in enumerate(self._gateways, 1):
+            value = str(gateway.get("serial", "")).strip()
+            if not value.isdigit():
+                raise ValueError(t("gw_error_serial_numeric").format(index=idx, value=value or "-"))
+            serials.append(int(value))
+        return serials
+
+    def _next_gateway_serial(self):
+        settings = _load_serial_settings()
+        registry = _serial_registry_fetch(settings)
+        repo_last = int(registry["families"]["GW"]["last_serial"] or 0)
+        local_serials = self._gateway_serial_numbers()
+        next_value = max([repo_last, *local_serials] if local_serials else [repo_last]) + 1
+        width = max(SERIAL_FAMILY_SETTINGS["GW"]["number_width"], len(str(next_value)))
+        self._status_lbl.configure(
+            text=t("serial_next_status").format(
+                family=_serial_family_name("GW"),
+                value=f"{next_value:0{width}d}",
+            )
+        )
+        return f"{next_value:0{width}d}"
 
     def _edit_gateway(self):
         idx = self._selected_index()
@@ -3340,12 +3439,21 @@ class GatewayTab(ctk.CTkScrollableFrame):
             return
 
         try:
+            settings = _load_serial_settings()
+            gateway_serials = self._gateway_serial_numbers()
             self._status_lbl.configure(text=t("gw_status_generating"))
             self.update()
+            _serial_registry_update_gateways(settings, gateway_serials, serial_year)
             _make_gateway_pdf(self._gateways, output_path, serial_year)
             total = len(self._gateways)
             pages = (total + 4) // 5
-            self._status_lbl.configure(text=t("gw_status_done").format(total=total, name=os.path.basename(output_path)))
+            width = max(SERIAL_FAMILY_SETTINGS["GW"]["number_width"], len(str(max(gateway_serials))))
+            self._status_lbl.configure(text=t("serial_repo_reserved").format(
+                family=_serial_family_name("GW"),
+                start=f"{min(gateway_serials):0{width}d}",
+                end=f"{max(gateway_serials):0{width}d}",
+                year=serial_year,
+            ))
             messagebox.showinfo(
                 "Exito",
                 t("gw_pdf_ok").format(total=total, pages=pages, path=output_path),

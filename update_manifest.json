@@ -1,5 +1,5 @@
 {
-  "version": "1.53",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v53.exe",
-  "notes": "Device Manager v1.53 con URL del manifest integrada por defecto para que el updater funcione anche senza update_settings.json."
+  "version": "1.54",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v54.exe",
+  "notes": "Device Manager v1.54 aggiunge il controllo seriale GitHub anche per i Gateway e suggerisce il prossimo seriale direttamente nella scheda GW."
 }
