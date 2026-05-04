@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "updated_at": "2026-05-04T00:00:00Z",
+  "families": {
+    "RTU": {
+      "last_serial": 4933,
+      "updated_at": "2026-05-04T00:00:00Z",
+      "updated_by": "PC-MANUEL",
+      "last_count": 0,
+      "last_range": "04933-04933",
+      "last_year": ""
+    },
+    "I-TIC": {
+      "last_serial": 192,
+      "updated_at": "2026-05-04T00:00:00Z",
+      "updated_by": "PC-MANUEL",
+      "last_count": 0,
+      "last_range": "0192-0192",
+      "last_year": ""
+    },
+    "TIC12": {
+      "last_serial": 50,
+      "updated_at": "2026-05-04T00:00:00Z",
+      "updated_by": "PC-MANUEL",
+      "last_count": 0,
+      "last_range": "0050-0050",
+      "last_year": ""
+    }
+  }
+}
