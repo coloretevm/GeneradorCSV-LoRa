@@ -1,5 +1,5 @@
 {
-  "version": "1.52",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v52.exe",
-  "notes": "Device Manager v1.52 con descarga en ruta elegida, cierre de la app actual y apertura automatica del nuevo EXE."
+  "version": "1.53",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v53.exe",
+  "notes": "Device Manager v1.53 con URL del manifest integrada por defecto para que el updater funcione anche senza update_settings.json."
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.53
+
+- URL del manifest GitHub integrata di default dentro l applicazione.
+- Se manca `update_settings.json`, il programma sa comunque dove controllare gli aggiornamenti.
+- Nuova build ufficiale pubblicata come `Device_Manager_v53.exe`.
+
 ## 1.52
 
 - L aggiornamento ora chiede dove salvare il nuovo EXE.

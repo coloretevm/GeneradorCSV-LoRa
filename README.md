@@ -4,18 +4,18 @@ Este repositorio contiene:
 
 - `generador_csv.py`: codigo fuente principal de la aplicacion.
 - `update_manifest.json`: manifiesto usado por la actualizacion automatica.
-- `downloads/Device_Manager_v52.exe`: ejecutable oficial actual.
+- `downloads/Device_Manager_v53.exe`: ejecutable oficial actual.
 - `publish_update.bat`: script para publicar nuevas versiones.
 
 ## Version actual
 
-- `1.52`
+- `1.53`
 
-## Que corrige la 1.52
+## Que corrige la 1.53
 
-- El updater pide la ruta donde guardar el nuevo EXE.
-- Tras descargarlo, la app actual se cierra y abre automaticamente el nuevo EXE guardado.
-- Publicacion del nuevo ejecutable `Device_Manager_v52.exe`.
+- El manifest de GitHub viene integrado por defecto dentro del programa.
+- Si falta `update_settings.json`, el updater sigue funcionando igualmente.
+- Publicacion del nuevo ejecutable `Device_Manager_v53.exe`.
 
 ## Actualizacion automatica
 

@@ -17,12 +17,12 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.52"
-APP_BUILD_NAME = "Device_Manager_v52"
+APP_VERSION = "1.53"
+APP_BUILD_NAME = "Device_Manager_v53"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
 DEFAULT_UPDATE_SETTINGS = {
-    "manifest_url": "",
+    "manifest_url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/update_manifest.json",
     "auto_check": True,
 }
 DEFAULT_SERIAL_SETTINGS = {
@@ -73,6 +73,8 @@ def _load_update_settings():
             data = json.load(fh)
         if isinstance(data, dict):
             settings.update(data)
+        if not str(settings.get("manifest_url", "")).strip():
+            settings["manifest_url"] = DEFAULT_UPDATE_SETTINGS["manifest_url"]
     except Exception:
         pass
     return settings
