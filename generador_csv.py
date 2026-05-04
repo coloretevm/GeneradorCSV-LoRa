@@ -17,8 +17,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.51"
-APP_BUILD_NAME = "Device_Manager_v51"
+APP_VERSION = "1.52"
+APP_BUILD_NAME = "Device_Manager_v52"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
 DEFAULT_UPDATE_SETTINGS = {
@@ -282,26 +282,13 @@ def _download_binary(url, target_path):
         shutil.copyfileobj(response, fh)
 
 
-def _launch_windows_updater(downloaded_exe, current_exe):
-    bat_path = os.path.join(tempfile.gettempdir(), "generadorcsv_update.bat")
+def _launch_windows_downloaded_app(downloaded_exe):
+    bat_path = os.path.join(tempfile.gettempdir(), "generadorcsv_launch_update.bat")
     script = (
         "@echo off\n"
         "setlocal EnableExtensions\n"
-        "set tries=0\n"
-        ":wait_loop\n"
-        "set /a tries+=1\n"
-        f'copy /Y "{downloaded_exe}" "{current_exe}" > nul 2>&1\n'
-        "if not errorlevel 1 goto launch_new\n"
-        "if %tries% GEQ 20 goto launch_downloaded\n"
-        "ping 127.0.0.1 -n 2 > nul\n"
-        "goto wait_loop\n"
-        ":launch_new\n"
-        f'start "" "{current_exe}"\n'
-        f'del /F /Q "{downloaded_exe}" > nul 2>&1\n'
-        "goto cleanup\n"
-        ":launch_downloaded\n"
+        "ping 127.0.0.1 -n 3 > nul\n"
         f'start "" "{downloaded_exe}"\n'
-        ":cleanup\n"
         'del "%~f0"\n'
     )
     with open(bat_path, "w", encoding="utf-8", newline="\r\n") as fh:
@@ -1017,18 +1004,6 @@ def check_for_updates(parent, interactive=True, status_cb=None):
         return False
 
     try:
-        if getattr(sys, "frozen", False):
-            current_exe = sys.executable
-            temp_name = os.path.basename(download_url) or f"{APP_BUILD_NAME}_{latest_version}.exe"
-            downloaded_exe = os.path.join(tempfile.gettempdir(), temp_name)
-            _download_binary(download_url, downloaded_exe)
-            _launch_windows_updater(downloaded_exe, current_exe)
-            if status_cb:
-                status_cb(t("upd_success_restart"))
-            messagebox.showinfo(t("upd_title"), t("upd_success_restart"), parent=parent)
-            parent.after(300, parent.destroy)
-            return True
-
         target = filedialog.asksaveasfilename(
             parent=parent,
             title=t("upd_download_title"),
@@ -1038,7 +1013,16 @@ def check_for_updates(parent, interactive=True, status_cb=None):
         )
         if not target:
             return False
+
         _download_binary(download_url, target)
+
+        if getattr(sys, "frozen", False):
+            _launch_windows_downloaded_app(target)
+            if status_cb:
+                status_cb(t("upd_success_restart"))
+            messagebox.showinfo(t("upd_title"), t("upd_success_restart"), parent=parent)
+            parent.after(300, parent.destroy)
+            return True
         if status_cb:
             status_cb(t("upd_status_available").format(version=latest_version))
         messagebox.showinfo(t("upd_title"), f"{latest_version}\n\n{target}", parent=parent)

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.52
+
+- L aggiornamento ora chiede dove salvare il nuovo EXE.
+- Dopo il download, il programma attuale si chiude e apre automaticamente il nuovo EXE scelto.
+- Nuova build ufficiale pubblicata come `Device_Manager_v52.exe`.
+
 ## 1.51
 
 - Corregido el updater de Windows para reintentar el reemplazo del EXE actual varias veces.

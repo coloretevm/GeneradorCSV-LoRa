@@ -4,18 +4,18 @@ Este repositorio contiene:
 
 - `generador_csv.py`: codigo fuente principal de la aplicacion.
 - `update_manifest.json`: manifiesto usado por la actualizacion automatica.
-- `downloads/Device_Manager_v51.exe`: ejecutable oficial actual.
+- `downloads/Device_Manager_v52.exe`: ejecutable oficial actual.
 - `publish_update.bat`: script para publicar nuevas versiones.
 
 ## Version actual
 
-- `1.51`
+- `1.52`
 
-## Que corrige la 1.51
+## Que corrige la 1.52
 
-- Updater de Windows reforzado para reintentar el reemplazo del EXE actual.
-- Si el reemplazo falla, se abre igualmente el EXE descargado.
-- Publicacion del nuevo ejecutable `Device_Manager_v51.exe`.
+- El updater pide la ruta donde guardar el nuevo EXE.
+- Tras descargarlo, la app actual se cierra y abre automaticamente el nuevo EXE guardado.
+- Publicacion del nuevo ejecutable `Device_Manager_v52.exe`.
 
 ## Actualizacion automatica
 
