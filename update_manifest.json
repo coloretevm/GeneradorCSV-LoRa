@@ -1,5 +1,5 @@
 {
-  "version": "1.50",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v50.exe",
-  "notes": "Device Manager v1.50 con fix del logo Tecnidro en las etiquetas TIC12 e I-TIC."
+  "version": "1.51",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v51.exe",
+  "notes": "Device Manager v1.51 con updater reforzado para reemplazar y lanzar la nueva version de forma mas robusta."
 }

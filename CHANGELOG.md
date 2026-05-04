@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.51
+
+- Corregido el updater de Windows para reintentar el reemplazo del EXE actual varias veces.
+- Si el reemplazo falla, ahora se abre igualmente el EXE descargado para que la actualizacion no quede bloqueada.
+- Nueva build oficial publicada como `Device_Manager_v51.exe`.
+
 ## 1.50
 
 - Corregida la carga del logo Tecnidro en las etiquetas `TIC12` e `I-TIC`.

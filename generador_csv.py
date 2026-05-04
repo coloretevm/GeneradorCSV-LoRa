@@ -17,13 +17,25 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.50"
-APP_BUILD_NAME = "Device_Manager_v50"
+APP_VERSION = "1.51"
+APP_BUILD_NAME = "Device_Manager_v51"
 UPDATE_SETTINGS_FILE = "update_settings.json"
-DEFAULT_MANIFEST_URL = "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/update_manifest.json"
+SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
 DEFAULT_UPDATE_SETTINGS = {
-    "manifest_url": DEFAULT_MANIFEST_URL,
+    "manifest_url": "",
     "auto_check": True,
+}
+DEFAULT_SERIAL_SETTINGS = {
+    "repo_path": r"C:\Users\manuel\Documents\New project\GeneradorCSV-LoRa",
+    "branch": "main",
+    "registry_file": "serial_registry.json",
+    "station_name": os.environ.get("COMPUTERNAME", "PC"),
+}
+SERIAL_FAMILY_ORDER = ("RTU", "I-TIC", "TIC12")
+SERIAL_FAMILY_SETTINGS = {
+    "RTU": {"entry_key": "serial_family_rtu", "number_width": 5},
+    "I-TIC": {"entry_key": "serial_family_itic", "number_width": 4},
+    "TIC12": {"entry_key": "serial_family_tic12", "number_width": 4},
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -39,50 +51,12 @@ def _runtime_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 
-def _manuals_dir():
-    runtime_dir = os.path.join(_runtime_dir(), "manuali")
-    bundled_dir = _resource("manuali")
-    source_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manuali")
-    if os.path.isdir(runtime_dir):
-        return runtime_dir
-    if os.path.isdir(bundled_dir):
-        return bundled_dir
-    preferred = source_dir
-    os.makedirs(preferred, exist_ok=True)
-    return preferred
-
-
-def _list_manual_files(section=None):
-    allowed_ext = {".pdf", ".doc", ".docx", ".txt", ".zip"}
-    folder = _manuals_dir()
-    if section:
-        folder = os.path.join(folder, section)
-        os.makedirs(folder, exist_ok=True)
-    files = []
-    for name in sorted(os.listdir(folder), key=str.lower):
-        path = os.path.join(folder, name)
-        if name.lower() == "readme.txt":
-            continue
-        if os.path.isfile(path) and os.path.splitext(name)[1].lower() in allowed_ext:
-            files.append(path)
-    return files
-
-
-def _open_folder(path):
-    try:
-        if sys.platform.startswith("win"):
-            os.startfile(path)
-        elif sys.platform == "darwin":
-            subprocess.Popen(["open", path])
-        else:
-            subprocess.Popen(["xdg-open", path])
-        return True
-    except Exception:
-        return False
-
-
 def _update_settings_path():
     return os.path.join(_runtime_dir(), UPDATE_SETTINGS_FILE)
+
+
+def _serial_settings_path():
+    return os.path.join(_runtime_dir(), SERIAL_SETTINGS_FILE)
 
 
 def _load_update_settings():
@@ -101,12 +75,6 @@ def _load_update_settings():
             settings.update(data)
     except Exception:
         pass
-    if not str(settings.get("manifest_url", "")).strip():
-        settings["manifest_url"] = DEFAULT_MANIFEST_URL
-        try:
-            _save_update_settings(settings)
-        except Exception:
-            pass
     return settings
 
 
@@ -116,6 +84,182 @@ def _save_update_settings(settings):
     merged.update(settings or {})
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(merged, fh, indent=2, ensure_ascii=False)
+
+
+def _load_serial_settings():
+    settings = dict(DEFAULT_SERIAL_SETTINGS)
+    path = _serial_settings_path()
+    if not os.path.isfile(path):
+        try:
+            _save_serial_settings(settings)
+        except Exception:
+            pass
+        return settings
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        if isinstance(data, dict):
+            settings.update(data)
+    except Exception:
+        pass
+    return settings
+
+
+def _save_serial_settings(settings):
+    path = _serial_settings_path()
+    merged = dict(DEFAULT_SERIAL_SETTINGS)
+    merged.update(settings or {})
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(merged, fh, indent=2, ensure_ascii=False)
+
+
+def _default_serial_registry():
+    families = {}
+    for family in SERIAL_FAMILY_ORDER:
+        families[family] = {
+            "last_serial": 0,
+            "updated_at": "",
+            "updated_by": "",
+            "last_count": 0,
+            "last_range": "",
+            "last_year": "",
+        }
+    return {
+        "version": 1,
+        "updated_at": "",
+        "families": families,
+    }
+
+
+def _normalize_serial_registry(data):
+    registry = _default_serial_registry()
+    if not isinstance(data, dict):
+        return registry
+    families = data.get("families", {})
+    registry["updated_at"] = str(data.get("updated_at", "") or "")
+    for family in SERIAL_FAMILY_ORDER:
+        entry = {}
+        if isinstance(families, dict):
+            raw_entry = families.get(family, {})
+            if isinstance(raw_entry, dict):
+                entry = raw_entry
+        registry["families"][family].update({
+            "last_serial": int(entry.get("last_serial", registry["families"][family]["last_serial"]) or 0),
+            "updated_at": str(entry.get("updated_at", "") or ""),
+            "updated_by": str(entry.get("updated_by", "") or ""),
+            "last_count": int(entry.get("last_count", 0) or 0),
+            "last_range": str(entry.get("last_range", "") or ""),
+            "last_year": str(entry.get("last_year", "") or ""),
+        })
+    return registry
+
+
+def _git_run(repo_path, *args):
+    creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    proc = subprocess.run(
+        ["git", "-C", repo_path, *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        creationflags=creation_flags,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()
+        raise RuntimeError(detail or "Git command failed.")
+    return proc.stdout.strip()
+
+
+def _serial_registry_full_path(settings):
+    repo_path = str(settings.get("repo_path", "")).strip()
+    rel_path = str(settings.get("registry_file", "serial_registry.json")).strip() or "serial_registry.json"
+    if not repo_path:
+        raise ValueError(t("serial_repo_error_missing_path"))
+    if not os.path.isdir(repo_path):
+        raise ValueError(t("serial_repo_error_missing_repo").format(path=repo_path))
+    return repo_path, rel_path, os.path.join(repo_path, rel_path)
+
+
+def _serial_registry_read_local(registry_path):
+    if not os.path.isfile(registry_path):
+        return _default_serial_registry()
+    with open(registry_path, "r", encoding="utf-8") as fh:
+        return _normalize_serial_registry(json.load(fh))
+
+
+def _serial_registry_write_local(registry_path, registry):
+    folder = os.path.dirname(registry_path)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    with open(registry_path, "w", encoding="utf-8") as fh:
+        json.dump(_normalize_serial_registry(registry), fh, indent=2, ensure_ascii=False)
+
+
+def _serial_registry_pull(settings):
+    repo_path, _, registry_path = _serial_registry_full_path(settings)
+    branch = str(settings.get("branch", "main")).strip() or "main"
+    _git_run(repo_path, "pull", "--rebase", "origin", branch)
+    return _serial_registry_read_local(registry_path)
+
+
+def _serial_registry_push(settings, registry, message):
+    repo_path, rel_path, registry_path = _serial_registry_full_path(settings)
+    branch = str(settings.get("branch", "main")).strip() or "main"
+    registry = _normalize_serial_registry(registry)
+    registry["updated_at"] = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    _serial_registry_write_local(registry_path, registry)
+    _git_run(repo_path, "add", rel_path)
+    creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    commit = subprocess.run(
+        ["git", "-C", repo_path, "commit", "-m", message],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        creationflags=creation_flags,
+    )
+    if commit.returncode != 0:
+        detail = (commit.stderr or commit.stdout or "").strip().lower()
+        if "nothing to commit" not in detail and "nothing added to commit" not in detail:
+            raise RuntimeError((commit.stderr or commit.stdout or "").strip() or "Git commit failed.")
+    _git_run(repo_path, "push", "origin", branch)
+    return registry
+
+
+def _serial_registry_fetch(settings):
+    return _serial_registry_pull(settings)
+
+
+def _serial_registry_update_last(settings, family, start, end, year, count):
+    if family not in SERIAL_FAMILY_ORDER:
+        raise ValueError(f"Unknown family: {family}")
+    registry = _serial_registry_pull(settings)
+    entry = registry["families"][family]
+    current_last = int(entry.get("last_serial", 0) or 0)
+    if start <= current_last:
+        raise ValueError(
+            t("serial_repo_error_overlap").format(
+                family=family,
+                current=current_last,
+                requested=start,
+            )
+        )
+    station = str(settings.get("station_name", "")).strip() or DEFAULT_SERIAL_SETTINGS["station_name"]
+    width = SERIAL_FAMILY_SETTINGS[family]["number_width"]
+    entry.update({
+        "last_serial": int(end),
+        "updated_at": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+        "updated_by": station,
+        "last_count": int(count),
+        "last_range": f"{start:0{width}d}-{end:0{width}d}",
+        "last_year": str(year),
+    })
+    registry["families"][family] = entry
+    return _serial_registry_push(
+        settings,
+        registry,
+        f"Update serial registry: {family} {entry['last_range']}/{year}",
+    )
 
 
 def _parse_version(value):
@@ -142,27 +286,28 @@ def _launch_windows_updater(downloaded_exe, current_exe):
     bat_path = os.path.join(tempfile.gettempdir(), "generadorcsv_update.bat")
     script = (
         "@echo off\n"
-        "ping 127.0.0.1 -n 4 > nul\n"
-        f'copy /Y "{downloaded_exe}" "{current_exe}" > nul\n'
+        "setlocal EnableExtensions\n"
+        "set tries=0\n"
+        ":wait_loop\n"
+        "set /a tries+=1\n"
+        f'copy /Y "{downloaded_exe}" "{current_exe}" > nul 2>&1\n'
+        "if not errorlevel 1 goto launch_new\n"
+        "if %tries% GEQ 20 goto launch_downloaded\n"
+        "ping 127.0.0.1 -n 2 > nul\n"
+        "goto wait_loop\n"
+        ":launch_new\n"
         f'start "" "{current_exe}"\n'
-        f'del "{downloaded_exe}"\n'
+        f'del /F /Q "{downloaded_exe}" > nul 2>&1\n'
+        "goto cleanup\n"
+        ":launch_downloaded\n"
+        f'start "" "{downloaded_exe}"\n'
+        ":cleanup\n"
         'del "%~f0"\n'
     )
     with open(bat_path, "w", encoding="utf-8", newline="\r\n") as fh:
         fh.write(script)
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     subprocess.Popen(["cmd", "/c", bat_path], creationflags=creation_flags)
-
-def _find_tecnidro_logo_path():
-    for filename in ("logo.png", "gw_logo_tecnidro.png"):
-        path = _resource(filename)
-        if os.path.isfile(path):
-            return path
-    return None
-
-
-def _is_near_white(r, g, b, a, threshold=245):
-    return a < 30 or (r >= threshold and g >= threshold and b >= threshold)
 
 def _make_logo_images(display_h=52):
     """Carga logo.png a alta resolución y devuelve (img_light, img_dark).
@@ -171,10 +316,7 @@ def _make_logo_images(display_h=52):
     Dark:  mismos pixels recoloreados a blanco puro, fondo transparente.
     """
     try:
-        logo_path = _find_tecnidro_logo_path()
-        if not logo_path:
-            return None, None, 0, 0
-        src = Image.open(logo_path).convert("RGBA")
+        src = Image.open(_resource("logo.png")).convert("RGBA")
         # Escalar a 2× resolución interna para HiDPI (CTkImage lo gestiona)
         w, h = src.size
         render_h = display_h * 2
@@ -211,15 +353,16 @@ def _make_black_logo_reader():
 
     import io
 
-    logo_path = _find_tecnidro_logo_path()
-    if not logo_path or not os.path.isfile(logo_path):
+    logo_path = _resource("logo.png")
+    if not os.path.isfile(logo_path):
         return None
 
     try:
         src = Image.open(logo_path).convert("RGBA")
         black_pixels = []
         for r, g, b, a in src.getdata():
-            if _is_near_white(r, g, b, a):
+            lum = 0.299 * r + 0.587 * g + 0.114 * b
+            if lum > 210 or a < 30:
                 black_pixels.append((255, 255, 255, 0))
             else:
                 black_pixels.append((0, 0, 0, a))
@@ -235,22 +378,6 @@ def _make_black_logo_reader():
 # ═════════════════════════════════════════════════════════════════════════════
 # Traducciones
 # ═════════════════════════════════════════════════════════════════════════════
-def _make_logo_reader():
-    try:
-        from reportlab.lib.utils import ImageReader
-    except Exception:
-        return None
-
-    logo_path = _find_tecnidro_logo_path()
-    if not logo_path or not os.path.isfile(logo_path):
-        return None
-
-    try:
-        return ImageReader(logo_path)
-    except Exception:
-        return None
-
-
 TRANSLATIONS = {
     'es': {
         'csv_title':     'Generador de CSV — Dispositivos LoRa',
@@ -425,19 +552,30 @@ TRANSLATIONS = {
         'serial_error_title': 'Error',
         'serial_error_missing': 'No se encontro el archivo:\n{filename}',
         'serial_save_title': 'Guardar Hyperterminal como...',
-        'manuals_title': 'Manuali',
-        'manuals_desc': 'Coloca aqui manuales PDF, DOC, DOCX, TXT o ZIP y la app te dejara guardarlos donde quieras.',
-        'manuals_section_files': 'Archivos manuales',
-        'manuals_open_folder': 'Abrir carpeta Manuali',
-        'manuals_refresh': 'Actualizar lista',
-        'manuals_empty': 'No hay manuales todavia. Copia tus archivos en la carpeta Manuali y pulsa actualizar.',
-        'manuals_empty_section': 'Todavia no hay manuales en esta seccion.',
-        'manuals_save_button': 'Guardar copia',
-        'manuals_status': 'Pestana Manuali lista.',
-        'manuals_status_saved': 'Manual guardado: {value}',
-        'manuals_status_opened': 'Carpeta Manuali abierta.',
-        'manuals_status_missing': 'No se encontro el manual seleccionado.',
-        'manuals_save_title': 'Guardar manual como...',
+        'serial_repo_title': 'Registro serial GitHub',
+        'serial_repo_desc': 'Sincroniza el ultimo serial usado entre los PC de la oficina usando el repositorio GitHub.',
+        'serial_repo_path': 'Carpeta local del repo:',
+        'serial_repo_branch': 'Branch:',
+        'serial_repo_file': 'Archivo registro:',
+        'serial_repo_station': 'Nombre PC / usuario:',
+        'serial_repo_save': 'Guardar configuracion',
+        'serial_repo_sync': 'Sincronizar desde GitHub',
+        'serial_repo_publish': 'Guardar contadores en GitHub',
+        'serial_repo_ready': 'Configura la ruta del repositorio y sincroniza el registro serial.',
+        'serial_repo_saved': 'Configuracion serial guardada.',
+        'serial_repo_synced': 'Registro serial sincronizado desde GitHub.',
+        'serial_repo_published': 'Contadores serial actualizados en GitHub.',
+        'serial_repo_status_format': '{family}: ultimo {serial}  |  lote {batch}  |  {who}',
+        'serial_repo_status_empty': 'Sin datos',
+        'serial_repo_error_missing_path': 'Escribe la carpeta local del repositorio GitHub.',
+        'serial_repo_error_missing_repo': 'La carpeta del repositorio no existe:\n{path}',
+        'serial_repo_error_overlap': '{family} ya llega hasta {current}. El serial solicitado ({requested}) repetiria codigos.',
+        'serial_next_button': 'Usar siguiente serial GitHub',
+        'serial_next_status': '{family}: siguiente serial sugerido {value}',
+        'serial_repo_reserved': 'Registro GitHub actualizado para {family}: {start} - {end}/{year}',
+        'serial_family_rtu': 'RTU',
+        'serial_family_itic': 'I-TIC',
+        'serial_family_tic12': 'TIC12',
     },
     'en': {
         'csv_title':     'CSV Generator — LoRa Devices',
@@ -583,19 +721,30 @@ TRANSLATIONS = {
         'serial_error_title': 'Error',
         'serial_error_missing': 'File not found:\n{filename}',
         'serial_save_title': 'Save Hyperterminal as...',
-        'manuals_title': 'Manuals',
-        'manuals_desc': 'Place PDF, DOC, DOCX, TXT, or ZIP manuals here and the app will let you save them wherever you want.',
-        'manuals_section_files': 'Manual files',
-        'manuals_open_folder': 'Open Manuali folder',
-        'manuals_refresh': 'Refresh list',
-        'manuals_empty': 'There are no manuals yet. Copy your files into the Manuali folder and press refresh.',
-        'manuals_empty_section': 'There are no manuals in this section yet.',
-        'manuals_save_button': 'Save copy',
-        'manuals_status': 'Manuali tab ready.',
-        'manuals_status_saved': 'Manual saved: {value}',
-        'manuals_status_opened': 'Manuali folder opened.',
-        'manuals_status_missing': 'The selected manual was not found.',
-        'manuals_save_title': 'Save manual as...',
+        'serial_repo_title': 'GitHub serial registry',
+        'serial_repo_desc': 'Sync the last used serial across office PCs using the GitHub repository.',
+        'serial_repo_path': 'Local repo folder:',
+        'serial_repo_branch': 'Branch:',
+        'serial_repo_file': 'Registry file:',
+        'serial_repo_station': 'PC / user name:',
+        'serial_repo_save': 'Save settings',
+        'serial_repo_sync': 'Sync from GitHub',
+        'serial_repo_publish': 'Save counters to GitHub',
+        'serial_repo_ready': 'Configure the repository path and sync the serial registry.',
+        'serial_repo_saved': 'Serial settings saved.',
+        'serial_repo_synced': 'Serial registry synced from GitHub.',
+        'serial_repo_published': 'Serial counters updated on GitHub.',
+        'serial_repo_status_format': '{family}: last {serial}  |  batch {batch}  |  {who}',
+        'serial_repo_status_empty': 'No data',
+        'serial_repo_error_missing_path': 'Enter the local GitHub repository folder.',
+        'serial_repo_error_missing_repo': 'The repository folder does not exist:\n{path}',
+        'serial_repo_error_overlap': '{family} already reaches {current}. Requested serial {requested} would duplicate codes.',
+        'serial_next_button': 'Use next GitHub serial',
+        'serial_next_status': '{family}: next suggested serial {value}',
+        'serial_repo_reserved': 'GitHub registry updated for {family}: {start} - {end}/{year}',
+        'serial_family_rtu': 'RTU',
+        'serial_family_itic': 'I-TIC',
+        'serial_family_tic12': 'TIC12',
     },
     'it': {
         'csv_title':     'Generatore CSV — Dispositivi LoRa',
@@ -770,19 +919,30 @@ TRANSLATIONS = {
         'serial_error_title': 'Errore',
         'serial_error_missing': 'File non trovato:\n{filename}',
         'serial_save_title': 'Salva Hyperterminal come...',
-        'manuals_title': 'Manuali',
-        'manuals_desc': 'Metti qui manuali PDF, DOC, DOCX, TXT o ZIP e l app ti permettera di salvarli dove vuoi.',
-        'manuals_section_files': 'File manuali',
-        'manuals_open_folder': 'Apri cartella Manuali',
-        'manuals_refresh': 'Aggiorna elenco',
-        'manuals_empty': 'Non ci sono ancora manuali. Copia i file nella cartella Manuali e premi aggiorna.',
-        'manuals_empty_section': 'Non ci sono ancora manuali in questa sezione.',
-        'manuals_save_button': 'Salva copia',
-        'manuals_status': 'Scheda Manuali pronta.',
-        'manuals_status_saved': 'Manuale salvato: {value}',
-        'manuals_status_opened': 'Cartella Manuali aperta.',
-        'manuals_status_missing': 'Il manuale selezionato non e stato trovato.',
-        'manuals_save_title': 'Salva manuale come...',
+        'serial_repo_title': 'Registro serial GitHub',
+        'serial_repo_desc': 'Sincronizza l ultimo seriale usato tra i PC dell ufficio usando il repository GitHub.',
+        'serial_repo_path': 'Cartella locale repo:',
+        'serial_repo_branch': 'Branch:',
+        'serial_repo_file': 'File registro:',
+        'serial_repo_station': 'Nome PC / utente:',
+        'serial_repo_save': 'Salva configurazione',
+        'serial_repo_sync': 'Sincronizza da GitHub',
+        'serial_repo_publish': 'Salva contatori su GitHub',
+        'serial_repo_ready': 'Configura il percorso del repository e sincronizza il registro seriale.',
+        'serial_repo_saved': 'Configurazione seriale salvata.',
+        'serial_repo_synced': 'Registro seriale sincronizzato da GitHub.',
+        'serial_repo_published': 'Contatori seriali aggiornati su GitHub.',
+        'serial_repo_status_format': '{family}: ultimo {serial}  |  lotto {batch}  |  {who}',
+        'serial_repo_status_empty': 'Nessun dato',
+        'serial_repo_error_missing_path': 'Inserisci la cartella locale del repository GitHub.',
+        'serial_repo_error_missing_repo': 'La cartella del repository non esiste:\n{path}',
+        'serial_repo_error_overlap': '{family} arriva gia a {current}. Il seriale richiesto ({requested}) duplichera dei codici.',
+        'serial_next_button': 'Usa il prossimo seriale GitHub',
+        'serial_next_status': '{family}: prossimo seriale suggerito {value}',
+        'serial_repo_reserved': 'Registro GitHub aggiornato per {family}: {start} - {end}/{year}',
+        'serial_family_rtu': 'RTU',
+        'serial_family_itic': 'I-TIC',
+        'serial_family_tic12': 'TIC12',
     },
 }
 
@@ -796,6 +956,11 @@ def set_lang(code):
     _cur_lang[0] = code
     for cb in _lang_cbs:
         cb()
+
+
+def _serial_family_name(family):
+    info = SERIAL_FAMILY_SETTINGS.get(family, {})
+    return t(info.get("entry_key", family))
 
 
 def check_for_updates(parent, interactive=True, status_cb=None):
@@ -852,6 +1017,18 @@ def check_for_updates(parent, interactive=True, status_cb=None):
         return False
 
     try:
+        if getattr(sys, "frozen", False):
+            current_exe = sys.executable
+            temp_name = os.path.basename(download_url) or f"{APP_BUILD_NAME}_{latest_version}.exe"
+            downloaded_exe = os.path.join(tempfile.gettempdir(), temp_name)
+            _download_binary(download_url, downloaded_exe)
+            _launch_windows_updater(downloaded_exe, current_exe)
+            if status_cb:
+                status_cb(t("upd_success_restart"))
+            messagebox.showinfo(t("upd_title"), t("upd_success_restart"), parent=parent)
+            parent.after(300, parent.destroy)
+            return True
+
         target = filedialog.asksaveasfilename(
             parent=parent,
             title=t("upd_download_title"),
@@ -957,7 +1134,7 @@ def _make_pdf(devices, output_path, include_bluetooth=True, rtu_header=False, lo
     FS_L=6.0; FS_NM=6.0; FS_SN=8.0; FS_DE=8.0
     FS_DA=8.0; FS_N=12.0; FS_BT=10.0; PAD=2.5
 
-    rtu_logo_reader = _make_logo_reader() or _make_black_logo_reader()
+    black_logo_reader = _make_black_logo_reader()
     qr_images = [_make_qr_image(dev['dev_eui']) for dev in devices]
     c = rl_canvas.Canvas(output_path, pagesize=A4)
     PER_PAGE = N_ROWS*N_COLS
@@ -989,9 +1166,9 @@ def _make_pdf(devices, output_path, include_bluetooth=True, rtu_header=False, lo
             HDR_LOGO_W=CL; HDR_TEXT_W=LW-HDR_LOGO_W
             logo_x0=lx; text_cx=lx+HDR_LOGO_W+HDR_TEXT_W/2
             c.setLineWidth(0.5); c.line(xv, hdr_bot, xv, top)
-            if rtu_logo_reader:
+            if black_logo_reader:
                 logo_pad=3.0
-                c.drawImage(rtu_logo_reader, logo_x0+logo_pad, hdr_bot+logo_pad,
+                c.drawImage(black_logo_reader, logo_x0+logo_pad, hdr_bot+logo_pad,
                             HDR_LOGO_W-2*logo_pad, HEADER_H-2*logo_pad,
                             mask='auto', preserveAspectRatio=True, anchor='c')
             fs_rtu_title=HEADER_H*0.32
@@ -1336,6 +1513,15 @@ class EtichetteTab(ctk.CTkScrollableFrame):
         self._hint_sf.pack(anchor="w", padx=18, pady=(0, 4))
         self._refs['lbl_ser_fmt'] = self._hint_sf
 
+        self._github_btn = ctk.CTkButton(
+            self,
+            text=t("serial_next_button"),
+            command=self._use_next_serial_from_github,
+            height=36,
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._github_btn.pack(anchor="w", padx=18, pady=(0, 8))
+
         # ── Opciones ─────────────────────────────────────────────
         _sec(self, 'sec_opts', self._refs)
 
@@ -1395,6 +1581,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
     def _refresh_lang(self):
         for key, w in self._refs.items():
             w.configure(text=t(key[5:]) if key.startswith('_sec_') else t(key))
+        self._github_btn.configure(text=t("serial_next_button"))
         self._pdf_status_lbl.configure(text=t('lbl_ready'))
 
     def _browse_csv_in(self):
@@ -1453,6 +1640,27 @@ class EtichetteTab(ctk.CTkScrollableFrame):
             devs.append({'name':nm,'dev_eui':de,'dev_addr':da})
         return devs
 
+    def _use_next_serial_from_github(self):
+        try:
+            base_devices = self._devices if self._devices else self._build_devices_manual()
+            count = len(base_devices)
+            if count <= 0:
+                raise ValueError("No hay dispositivos para calcular el siguiente serial.")
+            settings = _load_serial_settings()
+            registry = _serial_registry_fetch(settings)
+            last_serial = int(registry["families"]["RTU"]["last_serial"] or 0)
+            next_start = last_serial + 1
+            width = max(len(self.serial_start_var.get().strip()), SERIAL_FAMILY_SETTINGS["RTU"]["number_width"])
+            self.serial_start_var.set(f"{next_start:0{width}d}")
+            self._pdf_status_lbl.configure(
+                text=t("serial_next_status").format(
+                    family=_serial_family_name("RTU"),
+                    value=f"{next_start:0{width}d}",
+                )
+            )
+        except Exception as exc:
+            messagebox.showerror(t("serial_error_title"), str(exc))
+
     def _generate_pdf(self):
         try:
             ssr = self.serial_start_var.get().strip()
@@ -1462,6 +1670,12 @@ class EtichetteTab(ctk.CTkScrollableFrame):
             bd = self._devices if self._devices else self._build_devices_manual()
             if not bd: messagebox.showerror("Error","No hay dispositivos."); return
             sw = len(ssr); ss = int(ssr)
+
+            settings = _load_serial_settings()
+            self._pdf_status_lbl.configure(text="⏳  Sincronizando registro GitHub…")
+            self.update()
+            _serial_registry_update_last(settings, "RTU", ss, ss + len(bd) - 1, sy, len(bd))
+
             devices = []
             for i, dev in enumerate(bd):
                 sn = format(ss+i,f"0{sw}d")
@@ -1479,7 +1693,12 @@ class EtichetteTab(ctk.CTkScrollableFrame):
                       rtu_header=rtu_header,
                       loraconta=loraconta)
             n = len(devices)
-            self._pdf_status_lbl.configure(text=f"✓  {n} etiquetas  →  {os.path.basename(of)}")
+            self._pdf_status_lbl.configure(text=t("serial_repo_reserved").format(
+                family=_serial_family_name("RTU"),
+                start=devices[0]['serial'].split('/')[0],
+                end=devices[-1]['serial'].split('/')[0],
+                year=sy,
+            ))
             messagebox.showinfo("Éxito",
                 f"PDF generado correctamente.\n\n"
                 f"  Etiquetas:  {n}\n"
@@ -1735,9 +1954,12 @@ def _make_tic_pdf(labels, output_path, product_name):
     R4 = 12.0   # serial / FW bar  (bottom)
     LH = R1 + R2 + R3 + R4          # 48 pt total
 
-    LW = (AW - (N_COLS - 1) * COL_GAP) / N_COLS
+    LABEL_W = 50 * mm
+    grid_w = N_COLS * LABEL_W + (N_COLS - 1) * COL_GAP
+    LW = LABEL_W
     grid_h = N_ROWS * LH + (N_ROWS - 1) * GAP_V
     grid_top = PH - MT - max(0, (AH - grid_h) / 2.0) + (4.5 * mm)
+    grid_left = ML + max(0, (AW - grid_w) / 2.0)
 
     # Column proportions from Excel col widths: 7.0 / 9.29 / 9.86 (total 26.15)
     CA = LW * (7.00 / 26.15)        # logo area  =  "SERIAL N." cell width
@@ -1758,8 +1980,8 @@ def _make_tic_pdf(labels, output_path, product_name):
 
     # ── Prepare black version of logo for labels ─────────────────
     logo_reader = None
-    logo_path = _find_tecnidro_logo_path()
-    if logo_path and os.path.isfile(logo_path):
+    logo_path   = _resource("logo.png")
+    if os.path.isfile(logo_path):
         try:
             src = Image.open(logo_path).convert("RGBA")
             px  = list(src.getdata())
@@ -1790,7 +2012,7 @@ def _make_tic_pdf(labels, output_path, product_name):
         ci  = pos % N_COLS
         ri  = pos // N_COLS
 
-        lx       = ML + ci * (LW + COL_GAP)
+        lx       = grid_left + ci * (LW + COL_GAP)
         slot_top = grid_top - ri * (LH + GAP_V)
         ly       = slot_top - LH
 
@@ -2166,6 +2388,15 @@ class ProjectTab(ctk.CTkScrollableFrame):
         ctk.CTkEntry(r_ser, textvariable=self.p_ser_year_var, width=80).pack(
             side="left", padx=4)
 
+        self._github_btn = ctk.CTkButton(
+            self,
+            text=t("serial_next_button"),
+            command=self._use_next_serial_from_github,
+            height=36,
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._github_btn.pack(anchor="w", padx=18, pady=(0, 8))
+
         # ── Parámetros JSON ───────────────────────────────────────
         _sec(self, 'sec_proj_jsn', self._refs)
 
@@ -2241,6 +2472,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
             w.configure(text=t(key[5:]) if key.startswith('_sec_') else t(key))
         self._update_struct()
         self._update_preview()
+        self._github_btn.configure(text=t("serial_next_button"))
         self._btn_all.configure(text=t('btn_gen_all'))
 
     def _browse_root(self):
@@ -2280,6 +2512,27 @@ class ProjectTab(ctk.CTkScrollableFrame):
             f"       └── etiquette/   →  {name}.pdf"
         )
         self._struct_lbl.configure(text=txt)
+
+    def _use_next_serial_from_github(self):
+        try:
+            start = int(self.p_from_var.get().strip())
+            end = int(self.p_to_var.get().strip())
+            if end < start:
+                raise ValueError("'Hasta' debe ser ≥ 'Desde'")
+            settings = _load_serial_settings()
+            registry = _serial_registry_fetch(settings)
+            last_serial = int(registry["families"]["RTU"]["last_serial"] or 0)
+            next_start = last_serial + 1
+            width = max(len(self.p_ser_start_var.get().strip()), SERIAL_FAMILY_SETTINGS["RTU"]["number_width"])
+            self.p_ser_start_var.set(f"{next_start:0{width}d}")
+            self._status_lbl.configure(
+                text=t("serial_next_status").format(
+                    family=_serial_family_name("RTU"),
+                    value=f"{next_start:0{width}d}",
+                )
+            )
+        except Exception as exc:
+            messagebox.showerror(t("serial_error_title"), str(exc))
 
     # ── Generación ────────────────────────────────────────────────────────────
     def _generate_all(self):
@@ -2326,6 +2579,11 @@ class ProjectTab(ctk.CTkScrollableFrame):
             deveui_int  = int(deveui_s, 16)
             ser_width   = len(ser_raw)
             ser_start   = int(ser_raw)
+
+            settings = _load_serial_settings()
+            self._status_lbl.configure(text="⏳  Sincronizando registro GitHub…")
+            self.update()
+            _serial_registry_update_last(settings, "RTU", ser_start, ser_start + num_devices - 1, ser_year, num_devices)
 
             # ── Crear estructura de carpetas ──────────────────────
             proj_dir  = os.path.join(root, proj_name)
@@ -2383,7 +2641,12 @@ class ProjectTab(ctk.CTkScrollableFrame):
 
             # ── Resultado ─────────────────────────────────────────
             self._status_lbl.configure(
-                text=f"✓  Proyecto generado  →  {proj_dir}")
+                text=t("serial_repo_reserved").format(
+                    family=_serial_family_name("RTU"),
+                    start=f"{ser_start:0{ser_width}d}",
+                    end=f"{ser_start + num_devices - 1:0{ser_width}d}",
+                    year=ser_year,
+                ))
             messagebox.showinfo("Éxito",
                 f"Proyecto generado correctamente.\n\n"
                 f"  📁  {proj_name}/\n"
@@ -2415,6 +2678,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
                          corner_radius=0, border_width=0, label_text="")
         self._product_name = product_name
         self._title_key    = title_key
+        self._family = "TIC12" if product_name == "TIC12" else "I-TIC"
         self._refs = {}
         self._build()
         _lang_cbs.append(self._refresh_lang)
@@ -2438,6 +2702,15 @@ class TICLabelTab(ctk.CTkScrollableFrame):
         for v in (self.tic_from_var, self.tic_to_var):
             v.trace_add("write", self._update_preview)
         self._update_preview()
+
+        self._github_btn = ctk.CTkButton(
+            self,
+            text=t("serial_next_button"),
+            command=self._use_next_serial_from_github,
+            height=36,
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._github_btn.pack(anchor="w", padx=18, pady=(0, 8))
 
         _sec(self, 'sec_tic_out', self._refs)
         r = _row(self)
@@ -2479,6 +2752,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
         self._lbl_title.configure(text=t(self._title_key))
         for key, w in self._refs.items():
             w.configure(text=t(key))
+        self._github_btn.configure(text=t("serial_next_button"))
         self._update_preview()
 
     def _browse_pdf(self):
@@ -2492,11 +2766,38 @@ class TICLabelTab(ctk.CTkScrollableFrame):
     def _update_preview(self, *_):
         try:
             n = int(self.tic_to_var.get()) - int(self.tic_from_var.get()) + 1
-            pages = -(-n // 48)   # ceiling division
+            pages = -(-n // 45)   # ceiling division
             self._prev_lbl.configure(
-                text=f"  \u2192  {n} etiquetas  |  {pages} p\u00e1gina(s)  (48 por p\u00e1gina)")
+                text=f"  \u2192  {n} etiquetas  |  {pages} p\u00e1gina(s)  (45 por p\u00e1gina)")
         except ValueError:
             self._prev_lbl.configure(text="")
+
+    def _current_count(self):
+        start = int(self.tic_from_var.get().strip())
+        end = int(self.tic_to_var.get().strip())
+        if end < start:
+            raise ValueError("'Hasta' debe ser ≥ 'Desde'")
+        return start, end, end - start + 1
+
+    def _use_next_serial_from_github(self):
+        try:
+            _, _, count = self._current_count()
+            settings = _load_serial_settings()
+            registry = _serial_registry_fetch(settings)
+            last_serial = int(registry["families"][self._family]["last_serial"] or 0)
+            next_start = last_serial + 1
+            next_end = next_start + count - 1
+            width = max(len(self.tic_from_var.get().strip()), SERIAL_FAMILY_SETTINGS[self._family]["number_width"])
+            self.tic_from_var.set(f"{next_start:0{width}d}")
+            self.tic_to_var.set(f"{next_end:0{width}d}")
+            self._status_lbl.configure(
+                text=t("serial_next_status").format(
+                    family=_serial_family_name(self._family),
+                    value=f"{next_start:0{width}d}",
+                )
+            )
+        except Exception as exc:
+            messagebox.showerror(t("serial_error_title"), str(exc))
 
     def _generate(self):
         try:
@@ -2514,6 +2815,11 @@ class TICLabelTab(ctk.CTkScrollableFrame):
             if not year:
                 messagebox.showerror("Error", "Escribe el a\u00f1o"); return
 
+            settings = _load_serial_settings()
+            self._status_lbl.configure(text="⏳  Sincronizando registro GitHub…")
+            self.update()
+            _serial_registry_update_last(settings, self._family, start, end, year, end - start + 1)
+
             nw = max(5, len(str(end)))
             labels = [
                 {'serial': f"{i:0{nw}d}/{year}", 'fw': fw}
@@ -2526,8 +2832,13 @@ class TICLabelTab(ctk.CTkScrollableFrame):
             _make_tic_pdf(labels, out_pdf, self._product_name)
 
             n = len(labels)
-            pages = -(-n // 48)
-            self._status_lbl.configure(text=f"\u2713  {n} etiquetas generadas  \u2192  {out_pdf}")
+            pages = -(-n // 45)
+            self._status_lbl.configure(text=t("serial_repo_reserved").format(
+                family=_serial_family_name(self._family),
+                start=f"{start:0{nw}d}",
+                end=f"{end:0{nw}d}",
+                year=year,
+            ))
             messagebox.showinfo("Exito",
                 f"PDF generado correctamente.\n\n"
                 f"Etiquetas: {n}\n"
@@ -3314,6 +3625,7 @@ class SerialTab(ctk.CTkScrollableFrame):
 
     def __init__(self, master):
         super().__init__(master, fg_color=("white", "#1e1e2e"), corner_radius=0, border_width=0, label_text="")
+        self._serial_settings = _load_serial_settings()
         self._title_lbl = None
         self._desc_lbl = None
         self._section_lbl = None
@@ -3323,6 +3635,16 @@ class SerialTab(ctk.CTkScrollableFrame):
         self._tool2_title_lbl = None
         self._tool2_desc_lbl = None
         self._save2_btn = None
+        self._repo_title_lbl = None
+        self._repo_desc_lbl = None
+        self._repo_refs = {}
+        self._repo_path_var = tk.StringVar(value=self._serial_settings.get("repo_path", ""))
+        self._repo_branch_var = tk.StringVar(value=self._serial_settings.get("branch", "main"))
+        self._repo_file_var = tk.StringVar(value=self._serial_settings.get("registry_file", "serial_registry.json"))
+        self._repo_station_var = tk.StringVar(value=self._serial_settings.get("station_name", DEFAULT_SERIAL_SETTINGS["station_name"]))
+        self._family_vars = {family: tk.StringVar(value="0") for family in SERIAL_FAMILY_ORDER}
+        self._family_labels = {}
+        self._registry_status_lbl = None
         self._status_lbl = None
         self._build()
         _lang_cbs.append(self._refresh_lang)
@@ -3408,8 +3730,93 @@ class SerialTab(ctk.CTkScrollableFrame):
         )
         self._save2_btn.pack(anchor="w", padx=14, pady=(0, 14))
 
+        repo_bar = ctk.CTkFrame(self, fg_color=C_SEC_BG, corner_radius=6, height=30)
+        repo_bar.pack(fill="x", padx=18, pady=(8, 4))
+        repo_bar.pack_propagate(False)
+        self._repo_title_lbl = ctk.CTkLabel(
+            repo_bar,
+            text=t("serial_repo_title"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=C_SEC_TEXT,
+        )
+        self._repo_title_lbl.pack(side="left", padx=12)
+
+        self._repo_desc_lbl = ctk.CTkLabel(
+            self,
+            text=t("serial_repo_desc"),
+            text_color=C_HINT,
+            justify="left",
+            wraplength=900,
+        )
+        self._repo_desc_lbl.pack(anchor="w", padx=18, pady=(0, 8))
+
+        self._repo_field("serial_repo_path", self._repo_path_var, browse=True)
+        self._repo_field("serial_repo_branch", self._repo_branch_var, width=140)
+        self._repo_field("serial_repo_file", self._repo_file_var)
+        self._repo_field("serial_repo_station", self._repo_station_var, width=220)
+
+        btn_row = _row(self)
+        self._repo_save_btn = ctk.CTkButton(
+            btn_row,
+            text=t("serial_repo_save"),
+            width=180,
+            command=self._save_repo_settings,
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._repo_save_btn.pack(side="left", padx=(0, 8))
+        self._repo_sync_btn = ctk.CTkButton(
+            btn_row,
+            text=t("serial_repo_sync"),
+            width=180,
+            command=self._sync_registry,
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._repo_sync_btn.pack(side="left", padx=(0, 8))
+        self._repo_publish_btn = ctk.CTkButton(
+            btn_row,
+            text=t("serial_repo_publish"),
+            width=220,
+            command=self._publish_registry_values,
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._repo_publish_btn.pack(side="left")
+
+        family_card = ctk.CTkFrame(self, corner_radius=10, fg_color=("white", "#16202d"))
+        family_card.pack(fill="x", padx=18, pady=(10, 8))
+        for idx, family in enumerate(SERIAL_FAMILY_ORDER):
+            row = ctk.CTkFrame(family_card, fg_color="transparent")
+            row.pack(fill="x", padx=14, pady=6)
+            lbl = ctk.CTkLabel(
+                row,
+                text=_serial_family_name(family),
+                width=180,
+                anchor="w",
+                font=ctk.CTkFont(size=13, weight="bold"),
+            )
+            lbl.pack(side="left")
+            self._family_labels[family] = lbl
+            ctk.CTkEntry(row, textvariable=self._family_vars[family], width=120).pack(side="left", padx=(4, 10))
+            if idx < len(SERIAL_FAMILY_ORDER) - 1:
+                ctk.CTkFrame(family_card, height=1, fg_color=C_DIV).pack(fill="x", padx=12)
+
+        self._registry_status_lbl = ctk.CTkLabel(self, text=t("serial_repo_ready"), text_color=C_HINT)
+        self._registry_status_lbl.pack(anchor="w", padx=18, pady=(0, 8))
+
         self._status_lbl = ctk.CTkLabel(self, text=t("serial_status"), text_color=C_HINT)
         self._status_lbl.pack(anchor="w", padx=18, pady=(4, 14))
+        self._load_registry_values(_default_serial_registry())
+
+    def _repo_field(self, key, variable, width=None, browse=False):
+        row = _row(self)
+        lbl = ctk.CTkLabel(row, text=t(key), width=LBL_W, anchor="w")
+        lbl.pack(side="left")
+        self._repo_refs[key] = lbl
+        if width:
+            ctk.CTkEntry(row, textvariable=variable, width=width).pack(side="left", padx=(4, 0))
+        else:
+            ctk.CTkEntry(row, textvariable=variable).pack(side="left", fill="x", expand=True, padx=(4, 4))
+        if browse:
+            ctk.CTkButton(row, text="…", width=36, command=self._browse_repo).pack(side="left")
 
     def _save_package(self, filename):
         source = _resource(filename)
@@ -3437,6 +3844,57 @@ class SerialTab(ctk.CTkScrollableFrame):
     def _save_hyperterminal(self):
         self._save_package(self.PACKAGE_FILE)
 
+    def _browse_repo(self):
+        path = filedialog.askdirectory(title=t("serial_repo_path"))
+        if path:
+            self._repo_path_var.set(path)
+
+    def _collect_settings(self):
+        return {
+            "repo_path": self._repo_path_var.get().strip(),
+            "branch": self._repo_branch_var.get().strip() or "main",
+            "registry_file": self._repo_file_var.get().strip() or "serial_registry.json",
+            "station_name": self._repo_station_var.get().strip() or DEFAULT_SERIAL_SETTINGS["station_name"],
+        }
+
+    def _save_repo_settings(self):
+        settings = self._collect_settings()
+        try:
+            _save_serial_settings(settings)
+            self._serial_settings = settings
+            self._registry_status_lbl.configure(text=t("serial_repo_saved"))
+        except Exception as exc:
+            messagebox.showerror(t("serial_error_title"), str(exc))
+
+    def _load_registry_values(self, registry):
+        registry = _normalize_serial_registry(registry)
+        for family in SERIAL_FAMILY_ORDER:
+            self._family_vars[family].set(str(registry["families"][family]["last_serial"]))
+        self._status_lbl.configure(text=t("serial_status"))
+
+    def _sync_registry(self):
+        try:
+            self._save_repo_settings()
+            registry = _serial_registry_fetch(self._serial_settings)
+            self._load_registry_values(registry)
+            self._registry_status_lbl.configure(text=t("serial_repo_synced"))
+        except Exception as exc:
+            messagebox.showerror(t("serial_error_title"), str(exc))
+
+    def _publish_registry_values(self):
+        try:
+            self._save_repo_settings()
+            registry = _serial_registry_fetch(self._serial_settings)
+            for family in SERIAL_FAMILY_ORDER:
+                entry = registry["families"][family]
+                entry["last_serial"] = int(self._family_vars[family].get().strip() or "0")
+                entry["updated_by"] = self._serial_settings.get("station_name", DEFAULT_SERIAL_SETTINGS["station_name"])
+                entry["updated_at"] = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+            _serial_registry_push(self._serial_settings, registry, "Manual serial registry update")
+            self._registry_status_lbl.configure(text=t("serial_repo_published"))
+        except Exception as exc:
+            messagebox.showerror(t("serial_error_title"), str(exc))
+
     def _refresh_lang(self):
         self._title_lbl.configure(text=t("serial_title"))
         self._desc_lbl.configure(text=t("serial_desc"))
@@ -3447,150 +3905,17 @@ class SerialTab(ctk.CTkScrollableFrame):
         self._tool2_title_lbl.configure(text=t("serial_terminal_antonio_title"))
         self._tool2_desc_lbl.configure(text=t("serial_terminal_antonio_desc"))
         self._save2_btn.configure(text=t("serial_terminal_antonio_button"))
+        self._repo_title_lbl.configure(text=t("serial_repo_title"))
+        self._repo_desc_lbl.configure(text=t("serial_repo_desc"))
+        for key, widget in self._repo_refs.items():
+            widget.configure(text=t(key))
+        for family, widget in self._family_labels.items():
+            widget.configure(text=_serial_family_name(family))
+        self._repo_save_btn.configure(text=t("serial_repo_save"))
+        self._repo_sync_btn.configure(text=t("serial_repo_sync"))
+        self._repo_publish_btn.configure(text=t("serial_repo_publish"))
+        self._registry_status_lbl.configure(text=t("serial_repo_ready"))
         self._status_lbl.configure(text=t("serial_status"))
-
-
-class ManualsTab(ctk.CTkScrollableFrame):
-    def __init__(self, master):
-        super().__init__(master, fg_color=("white", "#1e1e2e"), corner_radius=0, border_width=0, label_text="")
-        self._title_lbl = None
-        self._desc_lbl = None
-        self._section_lbl = None
-        self._list_card = None
-        self._list_container = None
-        self._status_lbl = None
-        self._build()
-        _lang_cbs.append(self._refresh_lang)
-
-    def _build(self):
-        self._title_lbl = ctk.CTkLabel(self, text=t("manuals_title"), font=ctk.CTkFont(size=18, weight="bold"))
-        self._title_lbl.pack(pady=(12, 6))
-
-        self._desc_lbl = ctk.CTkLabel(
-            self,
-            text=t("manuals_desc"),
-            text_color=C_HINT,
-            justify="left",
-            wraplength=900,
-        )
-        self._desc_lbl.pack(anchor="w", padx=18, pady=(0, 10))
-
-        bar = ctk.CTkFrame(self, fg_color=C_SEC_BG, corner_radius=6, height=30)
-        bar.pack(fill="x", padx=18, pady=(8, 4))
-        bar.pack_propagate(False)
-        self._section_lbl = ctk.CTkLabel(
-            bar,
-            text=t("manuals_section_files"),
-            font=ctk.CTkFont(size=12, weight="bold"),
-            text_color=C_SEC_TEXT,
-        )
-        self._section_lbl.pack(side="left", padx=12)
-
-        self._list_card = ctk.CTkFrame(self, corner_radius=10, fg_color=("white", "#16202d"))
-        self._list_card.pack(fill="x", padx=18, pady=(0, 10))
-
-        self._list_container = ctk.CTkFrame(self._list_card, fg_color="transparent")
-        self._list_container.pack(fill="x", padx=12, pady=12)
-
-        self._status_lbl = ctk.CTkLabel(self, text=t("manuals_status"), text_color=C_HINT)
-        self._status_lbl.pack(anchor="w", padx=18, pady=(4, 14))
-
-        self._populate_list()
-
-    def _populate_list(self):
-        for child in self._list_container.winfo_children():
-            child.destroy()
-
-        sections = ["RTU", "Gateway", "I-TIC", "TIC12"]
-        has_any_manual = any(_list_manual_files(section) for section in sections)
-        if not has_any_manual:
-            empty = ctk.CTkLabel(
-                self._list_container,
-                text=t("manuals_empty"),
-                text_color=C_HINT,
-                justify="left",
-                wraplength=860,
-            )
-            empty.pack(anchor="w", padx=4, pady=8)
-        for section_idx, section_name in enumerate(sections):
-            section_card = ctk.CTkFrame(self._list_container, corner_radius=10, fg_color=("white", "#1b2636"))
-            section_card.pack(fill="x", pady=(0, 10 if section_idx < len(sections) - 1 else 0))
-
-            header = ctk.CTkFrame(section_card, fg_color=C_SEC_BG, corner_radius=8, height=32)
-            header.pack(fill="x", padx=10, pady=(10, 8))
-            header.pack_propagate(False)
-            ctk.CTkLabel(
-                header,
-                text=section_name,
-                font=ctk.CTkFont(size=13, weight="bold"),
-                text_color=C_SEC_TEXT,
-            ).pack(side="left", padx=12)
-
-            body = ctk.CTkFrame(section_card, fg_color="transparent")
-            body.pack(fill="x", padx=12, pady=(0, 12))
-
-            manuals = _list_manual_files(section_name)
-            if not manuals:
-                ctk.CTkLabel(
-                    body,
-                    text=t("manuals_empty_section"),
-                    text_color=C_HINT,
-                    justify="left",
-                    wraplength=820,
-                ).pack(anchor="w", padx=4, pady=8)
-                continue
-
-            for idx, path in enumerate(manuals):
-                row = ctk.CTkFrame(body, fg_color="transparent")
-                row.pack(fill="x", pady=(0, 8 if idx < len(manuals) - 1 else 0))
-
-                info = ctk.CTkFrame(row, fg_color="transparent")
-                info.pack(side="left", fill="x", expand=True)
-
-                ctk.CTkLabel(
-                    info,
-                    text=os.path.basename(path),
-                    font=ctk.CTkFont(size=13, weight="bold"),
-                    anchor="w",
-                ).pack(anchor="w")
-
-                ctk.CTkButton(
-                    row,
-                    text=t("manuals_save_button"),
-                    width=150,
-                    command=lambda p=path: self._save_manual(p),
-                    font=ctk.CTkFont(size=12, weight="bold"),
-                ).pack(side="right", padx=(12, 0))
-
-                if idx < len(manuals) - 1:
-                    ctk.CTkFrame(body, height=1, fg_color=C_DIV).pack(fill="x", padx=4, pady=(0, 8))
-
-        self._status_lbl.configure(text=t("manuals_status"))
-
-    def _save_manual(self, source):
-        if not os.path.isfile(source):
-            self._status_lbl.configure(text=t("manuals_status_missing"))
-            messagebox.showerror(t("serial_error_title"), t("manuals_status_missing"))
-            self._populate_list()
-            return
-
-        target = filedialog.asksaveasfilename(
-            title=t("manuals_save_title"),
-            initialfile=os.path.basename(source),
-            defaultextension=os.path.splitext(source)[1],
-            filetypes=[("All files", "*.*")],
-        )
-        if not target:
-            return
-
-        shutil.copyfile(source, target)
-        self._status_lbl.configure(text=t("manuals_status_saved").format(value=os.path.basename(target)))
-
-    def _refresh_lang(self):
-        self._title_lbl.configure(text=t("manuals_title"))
-        self._desc_lbl.configure(text=t("manuals_desc"))
-        self._section_lbl.configure(text=t("manuals_section_files"))
-        self._populate_list()
 
 
 class App:
@@ -3638,11 +3963,10 @@ class App:
         T_ITIC  = "I-TIC"
         T_TIC12 = "TIC12"
         T_FW    = "FW Version"
-        T_MANUALI = "Manuali"
         T_SERIAL = "Serial"
         T_LANG  = "⚙  Language"
 
-        for name in (T_RTU, T_GW, T_ITIC, T_TIC12, T_FW, T_MANUALI, T_SERIAL, T_LANG):
+        for name in (T_RTU, T_GW, T_ITIC, T_TIC12, T_FW, T_SERIAL, T_LANG):
             self.tabview.add(name)
 
         # GW, I-TIC, TIC12 y FW Version directamente en la barra principal
@@ -3650,7 +3974,6 @@ class App:
         TICLabelTab(self.tabview.tab(T_ITIC),  product_name="I-TIC 1V", title_key="itic_title").pack(fill="both", expand=True)
         TICLabelTab(self.tabview.tab(T_TIC12), product_name="TIC12",    title_key="tic12_title").pack(fill="both", expand=True)
         FWVersionTab(self.tabview.tab(T_FW)).pack(fill="both", expand=True)
-        ManualsTab(self.tabview.tab(T_MANUALI)).pack(fill="both", expand=True)
         SerialTab(self.tabview.tab(T_SERIAL)).pack(fill="both", expand=True)
         LangTab(self.tabview.tab(T_LANG)).pack(fill="both", expand=True)
 

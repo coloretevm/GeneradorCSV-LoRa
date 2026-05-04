@@ -4,18 +4,18 @@ Este repositorio contiene:
 
 - `generador_csv.py`: codigo fuente principal de la aplicacion.
 - `update_manifest.json`: manifiesto usado por la actualizacion automatica.
-- `downloads/Device_Manager_v46.exe`: ejecutable oficial actual.
+- `downloads/Device_Manager_v51.exe`: ejecutable oficial actual.
 - `publish_update.bat`: script para publicar nuevas versiones.
 
 ## Version actual
 
-- `1.46`
+- `1.51`
 
-## Que corrige la 1.46
+## Que corrige la 1.51
 
-- Idioma por defecto cambiado a italiano.
-- Publicacion del nuevo ejecutable `Device_Manager_v46.exe`.
-- Codigo Python y manifiesto de actualizacion alineados con la version 1.46.
+- Updater de Windows reforzado para reintentar el reemplazo del EXE actual.
+- Si el reemplazo falla, se abre igualmente el EXE descargado.
+- Publicacion del nuevo ejecutable `Device_Manager_v51.exe`.
 
 ## Actualizacion automatica
 
