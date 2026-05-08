@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.57
+
+- Le sezioni `RTU`, `GW`, `I-TIC` e `TIC12` caricano automaticamente il prossimo seriale disponibile da GitHub all apertura del programma.
+- Rimossi i pulsanti manuali `Usa il prossimo seriale GitHub` dalle sezioni operative.
+- Nella scheda `Serial` ci sono ora solo i pulsanti `Salva valore` per ogni famiglia e `Salva tutti i valori`.
+- Ogni salvataggio manuale su GitHub richiede la password amministrativa.
+- Nuova build ufficiale pubblicata come `Device_Manager_v57.exe`.
+
 ## 1.56
 
 - Corretti i testi corrotti nella scheda `Language`.

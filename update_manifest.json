@@ -1,5 +1,5 @@
 {
-  "version": "1.56",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v56.exe",
-  "notes": "Device Manager v1.56 corregge i testi corrotti nella scheda Language e mantiene il supporto al registro seriale GitHub via internet."
+  "version": "1.57",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v57.exe",
+  "notes": "Device Manager v1.57 carica automaticamente il prossimo seriale disponibile da GitHub nelle sezioni RTU, GW, I-TIC e TIC12 e protegge il salvataggio manuale dei valori con password."
 }

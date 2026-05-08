@@ -1,5 +1,5 @@
 ﻿import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, simpledialog
 import customtkinter as ctk
 import base64
 import csv
@@ -18,8 +18,9 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.56"
-APP_BUILD_NAME = "Device_Manager_v56"
+APP_VERSION = "1.57"
+APP_BUILD_NAME = "Device_Manager_v57"
+SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
 DEFAULT_UPDATE_SETTINGS = {
@@ -40,6 +41,7 @@ SERIAL_FAMILY_SETTINGS = {
     "I-TIC": {"entry_key": "serial_family_itic", "number_width": 4},
     "TIC12": {"entry_key": "serial_family_tic12", "number_width": 4},
 }
+_serial_registry_cache = None
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _resource(filename):
@@ -203,12 +205,12 @@ def _serial_registry_write_local(registry_path, registry):
 def _serial_registry_pull(settings):
     registry_url = str(settings.get("registry_url", "")).strip()
     if registry_url.lower().startswith(("http://", "https://")):
-        return _normalize_serial_registry(_download_json(registry_url))
+        return _set_serial_registry_cache(_download_json(registry_url))
 
     repo_path, _, registry_path = _serial_registry_full_path(settings)
     branch = str(settings.get("branch", "main")).strip() or "main"
     _git_run(repo_path, "pull", "--rebase", "origin", branch)
-    return _serial_registry_read_local(registry_path)
+    return _set_serial_registry_cache(_serial_registry_read_local(registry_path))
 
 
 def _serial_registry_push(settings, registry, message):
@@ -249,7 +251,7 @@ def _serial_registry_push(settings, registry, message):
             data=json.dumps(payload).encode("utf-8"),
             method="PUT",
         )
-        return registry
+        return _set_serial_registry_cache(registry)
 
     repo_path, rel_path, registry_path = _serial_registry_full_path(settings)
     _serial_registry_write_local(registry_path, registry)
@@ -268,7 +270,7 @@ def _serial_registry_push(settings, registry, message):
         if "nothing to commit" not in detail and "nothing added to commit" not in detail:
             raise RuntimeError((commit.stderr or commit.stdout or "").strip() or "Git commit failed.")
     _git_run(repo_path, "push", "origin", branch)
-    return registry
+    return _set_serial_registry_cache(registry)
 
 
 def _serial_registry_fetch(settings):
@@ -652,16 +654,23 @@ TRANSLATIONS = {
         'serial_repo_save': 'Guardar configuracion',
         'serial_repo_sync': 'Sincronizar desde GitHub',
         'serial_repo_publish': 'Guardar contadores en GitHub',
+        'serial_repo_save_value': 'Salva valore {family}',
+        'serial_repo_save_all': 'Salva tutti i valori',
         'serial_repo_ready': 'Configura las URL de GitHub, el token y sincroniza el registro serial.',
         'serial_repo_saved': 'Configuracion serial guardada.',
         'serial_repo_synced': 'Registro serial sincronizado desde GitHub.',
         'serial_repo_published': 'Contadores serial actualizados en GitHub.',
+        'serial_repo_value_saved': 'Valor guardado en GitHub para {family}: {value}',
+        'serial_repo_all_saved': 'Todos los valores se guardaron en GitHub.',
         'serial_repo_status_format': '{family}: ultimo {serial}  |  lote {batch}  |  {who}',
         'serial_repo_status_empty': 'Sin datos',
         'serial_repo_error_missing_path': 'Escribe la URL RAW del registro serial en GitHub.',
         'serial_repo_error_missing_repo': 'La configuracion del repositorio GitHub no es valida:\n{path}',
         'serial_repo_error_missing_token': 'Falta el GitHub token. Configuralo en la pestana Serial para poder guardar los nuevos seriales.',
         'serial_repo_error_overlap': '{family} ya llega hasta {current}. El serial solicitado ({requested}) repetiria codigos.',
+        'serial_password_title': 'Contrasena',
+        'serial_password_prompt': 'Escribe la contrasena para guardar el valor en GitHub:',
+        'serial_password_error': 'Contrasena incorrecta.',
         'serial_next_button': 'Usar siguiente serial GitHub',
         'serial_next_status': '{family}: siguiente serial sugerido {value}',
         'serial_repo_reserved': 'Registro GitHub actualizado para {family}: {start} - {end}/{year}',
@@ -826,16 +835,23 @@ TRANSLATIONS = {
         'serial_repo_save': 'Save settings',
         'serial_repo_sync': 'Sync from GitHub',
         'serial_repo_publish': 'Save counters to GitHub',
+        'serial_repo_save_value': 'Save value {family}',
+        'serial_repo_save_all': 'Save all values',
         'serial_repo_ready': 'Configure the GitHub URLs, token, and sync the serial registry.',
         'serial_repo_saved': 'Serial settings saved.',
         'serial_repo_synced': 'Serial registry synced from GitHub.',
         'serial_repo_published': 'Serial counters updated on GitHub.',
+        'serial_repo_value_saved': 'Value saved on GitHub for {family}: {value}',
+        'serial_repo_all_saved': 'All values were saved to GitHub.',
         'serial_repo_status_format': '{family}: last {serial}  |  batch {batch}  |  {who}',
         'serial_repo_status_empty': 'No data',
         'serial_repo_error_missing_path': 'Enter the GitHub RAW URL for the serial registry.',
         'serial_repo_error_missing_repo': 'The GitHub repository configuration is not valid:\n{path}',
         'serial_repo_error_missing_token': 'The GitHub token is missing. Configure it in the Serial tab to save new serials.',
         'serial_repo_error_overlap': '{family} already reaches {current}. Requested serial {requested} would duplicate codes.',
+        'serial_password_title': 'Password',
+        'serial_password_prompt': 'Enter the password to save the value to GitHub:',
+        'serial_password_error': 'Incorrect password.',
         'serial_next_button': 'Use next GitHub serial',
         'serial_next_status': '{family}: next suggested serial {value}',
         'serial_repo_reserved': 'GitHub registry updated for {family}: {start} - {end}/{year}',
@@ -1029,16 +1045,23 @@ TRANSLATIONS = {
         'serial_repo_save': 'Salva configurazione',
         'serial_repo_sync': 'Sincronizza da GitHub',
         'serial_repo_publish': 'Salva contatori su GitHub',
+        'serial_repo_save_value': 'Salva valore {family}',
+        'serial_repo_save_all': 'Salva tutti i valori',
         'serial_repo_ready': 'Configura le URL di GitHub, il token e sincronizza il registro seriale.',
         'serial_repo_saved': 'Configurazione seriale salvata.',
         'serial_repo_synced': 'Registro seriale sincronizzato da GitHub.',
         'serial_repo_published': 'Contatori seriali aggiornati su GitHub.',
+        'serial_repo_value_saved': 'Valore salvato su GitHub per {family}: {value}',
+        'serial_repo_all_saved': 'Tutti i valori sono stati salvati su GitHub.',
         'serial_repo_status_format': '{family}: ultimo {serial}  |  lotto {batch}  |  {who}',
         'serial_repo_status_empty': 'Nessun dato',
         'serial_repo_error_missing_path': 'Inserisci la URL RAW del registro seriale su GitHub.',
         'serial_repo_error_missing_repo': 'La configurazione del repository GitHub non e valida:\n{path}',
         'serial_repo_error_missing_token': 'Manca il GitHub token. Configuralo nella scheda Serial per salvare i nuovi seriali.',
         'serial_repo_error_overlap': '{family} arriva gia a {current}. Il seriale richiesto ({requested}) duplichera dei codici.',
+        'serial_password_title': 'Password',
+        'serial_password_prompt': 'Inserisci la password per salvare il valore su GitHub:',
+        'serial_password_error': 'Password non corretta.',
         'serial_next_button': 'Usa il prossimo seriale GitHub',
         'serial_next_status': '{family}: prossimo seriale suggerito {value}',
         'serial_repo_reserved': 'Registro GitHub aggiornato per {family}: {start} - {end}/{year}',
@@ -1064,6 +1087,44 @@ def set_lang(code):
 def _serial_family_name(family):
     info = SERIAL_FAMILY_SETTINGS.get(family, {})
     return t(info.get("entry_key", family))
+
+
+def _set_serial_registry_cache(registry):
+    global _serial_registry_cache
+    _serial_registry_cache = _normalize_serial_registry(registry)
+    return _serial_registry_cache
+
+
+def _serial_registry_fetch_cached(settings=None, force=False):
+    global _serial_registry_cache
+    if force or _serial_registry_cache is None:
+        _serial_registry_cache = _normalize_serial_registry(
+            _serial_registry_fetch(settings or _load_serial_settings())
+        )
+    return copy.deepcopy(_serial_registry_cache)
+
+
+def _next_available_serial(family, count=1, settings=None, force=False):
+    registry = _serial_registry_fetch_cached(settings=settings, force=force)
+    last_serial = int(registry["families"][family]["last_serial"] or 0)
+    next_start = last_serial + 1
+    next_end = next_start + max(1, int(count)) - 1
+    return next_start, next_end
+
+
+def _prompt_serial_password(parent):
+    value = simpledialog.askstring(
+        t("serial_password_title"),
+        t("serial_password_prompt"),
+        parent=parent,
+        show="*",
+    )
+    if value is None:
+        return False
+    if value != SERIAL_ADMIN_PASSWORD:
+        messagebox.showerror(t("serial_error_title"), t("serial_password_error"), parent=parent)
+        return False
+    return True
 
 
 def check_for_updates(parent, interactive=True, status_cb=None):
@@ -1613,15 +1674,6 @@ class EtichetteTab(ctk.CTkScrollableFrame):
         self._hint_sf.pack(anchor="w", padx=18, pady=(0, 4))
         self._refs['lbl_ser_fmt'] = self._hint_sf
 
-        self._github_btn = ctk.CTkButton(
-            self,
-            text=t("serial_next_button"),
-            command=self._use_next_serial_from_github,
-            height=36,
-            font=ctk.CTkFont(size=12, weight="bold"),
-        )
-        self._github_btn.pack(anchor="w", padx=18, pady=(0, 8))
-
         # â”€â”€ Opciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_opts', self._refs)
 
@@ -1664,6 +1716,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
                                              text_color=C_HINT,
                                              font=ctk.CTkFont(size=10))
         self._pdf_status_lbl.pack(anchor="w", padx=18, pady=(0, 14))
+        self.after(150, self._use_next_serial_from_github)
 
     # â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _frow(self, key, default, attr, w=None):
@@ -1681,7 +1734,6 @@ class EtichetteTab(ctk.CTkScrollableFrame):
     def _refresh_lang(self):
         for key, w in self._refs.items():
             w.configure(text=t(key[5:]) if key.startswith('_sec_') else t(key))
-        self._github_btn.configure(text=t("serial_next_button"))
         self._pdf_status_lbl.configure(text=t('lbl_ready'))
 
     def _browse_csv_in(self):
@@ -1745,11 +1797,8 @@ class EtichetteTab(ctk.CTkScrollableFrame):
             base_devices = self._devices if self._devices else self._build_devices_manual()
             count = len(base_devices)
             if count <= 0:
-                raise ValueError("No hay dispositivos para calcular el siguiente serial.")
-            settings = _load_serial_settings()
-            registry = _serial_registry_fetch(settings)
-            last_serial = int(registry["families"]["RTU"]["last_serial"] or 0)
-            next_start = last_serial + 1
+                return
+            next_start, _ = _next_available_serial("RTU", count=count, settings=_load_serial_settings())
             width = max(len(self.serial_start_var.get().strip()), SERIAL_FAMILY_SETTINGS["RTU"]["number_width"])
             self.serial_start_var.set(f"{next_start:0{width}d}")
             self._pdf_status_lbl.configure(
@@ -1759,7 +1808,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
                 )
             )
         except Exception as exc:
-            messagebox.showerror(t("serial_error_title"), str(exc))
+            self._pdf_status_lbl.configure(text=str(exc))
 
     def _generate_pdf(self):
         try:
@@ -2489,15 +2538,6 @@ class ProjectTab(ctk.CTkScrollableFrame):
         ctk.CTkEntry(r_ser, textvariable=self.p_ser_year_var, width=80).pack(
             side="left", padx=4)
 
-        self._github_btn = ctk.CTkButton(
-            self,
-            text=t("serial_next_button"),
-            command=self._use_next_serial_from_github,
-            height=36,
-            font=ctk.CTkFont(size=12, weight="bold"),
-        )
-        self._github_btn.pack(anchor="w", padx=18, pady=(0, 8))
-
         # â”€â”€ ParÃ¡metros JSON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_proj_jsn', self._refs)
 
@@ -2552,6 +2592,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
         self._status_lbl.pack(anchor="w", padx=18, pady=(0, 16))
 
         self._update_struct()
+        self.after(150, self._use_next_serial_from_github)
 
     # â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _frow(self, key, default, attr, w=None):
@@ -2573,7 +2614,6 @@ class ProjectTab(ctk.CTkScrollableFrame):
             w.configure(text=t(key[5:]) if key.startswith('_sec_') else t(key))
         self._update_struct()
         self._update_preview()
-        self._github_btn.configure(text=t("serial_next_button"))
         self._btn_all.configure(text=t('btn_gen_all'))
 
     def _browse_root(self):
@@ -2619,11 +2659,8 @@ class ProjectTab(ctk.CTkScrollableFrame):
             start = int(self.p_from_var.get().strip())
             end = int(self.p_to_var.get().strip())
             if end < start:
-                raise ValueError("'Hasta' debe ser â‰¥ 'Desde'")
-            settings = _load_serial_settings()
-            registry = _serial_registry_fetch(settings)
-            last_serial = int(registry["families"]["RTU"]["last_serial"] or 0)
-            next_start = last_serial + 1
+                return
+            next_start, _ = _next_available_serial("RTU", count=(end - start + 1), settings=_load_serial_settings())
             width = max(len(self.p_ser_start_var.get().strip()), SERIAL_FAMILY_SETTINGS["RTU"]["number_width"])
             self.p_ser_start_var.set(f"{next_start:0{width}d}")
             self._status_lbl.configure(
@@ -2633,7 +2670,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
                 )
             )
         except Exception as exc:
-            messagebox.showerror(t("serial_error_title"), str(exc))
+            self._status_lbl.configure(text=str(exc))
 
     # â”€â”€ GeneraciÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _generate_all(self):
@@ -2804,15 +2841,6 @@ class TICLabelTab(ctk.CTkScrollableFrame):
             v.trace_add("write", self._update_preview)
         self._update_preview()
 
-        self._github_btn = ctk.CTkButton(
-            self,
-            text=t("serial_next_button"),
-            command=self._use_next_serial_from_github,
-            height=36,
-            font=ctk.CTkFont(size=12, weight="bold"),
-        )
-        self._github_btn.pack(anchor="w", padx=18, pady=(0, 8))
-
         _sec(self, 'sec_tic_out', self._refs)
         r = _row(self)
         lbl_pdf = ctk.CTkLabel(r, text=t('lbl_tic_pdf'), width=LBL_W, anchor="w")
@@ -2835,6 +2863,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
         self._status_lbl = ctk.CTkLabel(self, text="", text_color=C_HINT,
                                          font=ctk.CTkFont(size=10))
         self._status_lbl.pack(anchor="w", padx=18, pady=(0, 14))
+        self.after(150, self._use_next_serial_from_github)
 
     def _frow(self, key, default, attr, w=None):
         r = _row(self)
@@ -2853,7 +2882,6 @@ class TICLabelTab(ctk.CTkScrollableFrame):
         self._lbl_title.configure(text=t(self._title_key))
         for key, w in self._refs.items():
             w.configure(text=t(key))
-        self._github_btn.configure(text=t("serial_next_button"))
         self._update_preview()
 
     def _browse_pdf(self):
@@ -2883,11 +2911,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
     def _use_next_serial_from_github(self):
         try:
             _, _, count = self._current_count()
-            settings = _load_serial_settings()
-            registry = _serial_registry_fetch(settings)
-            last_serial = int(registry["families"][self._family]["last_serial"] or 0)
-            next_start = last_serial + 1
-            next_end = next_start + count - 1
+            next_start, next_end = _next_available_serial(self._family, count=count, settings=_load_serial_settings())
             width = max(len(self.tic_from_var.get().strip()), SERIAL_FAMILY_SETTINGS[self._family]["number_width"])
             self.tic_from_var.set(f"{next_start:0{width}d}")
             self.tic_to_var.set(f"{next_end:0{width}d}")
@@ -2898,7 +2922,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
                 )
             )
         except Exception as exc:
-            messagebox.showerror(t("serial_error_title"), str(exc))
+            self._status_lbl.configure(text=str(exc))
 
     def _generate(self):
         try:
@@ -3268,7 +3292,6 @@ class GatewayTab(ctk.CTkScrollableFrame):
         super().__init__(master, fg_color=("white", "#1e1e2e"), corner_radius=0, border_width=0, label_text="")
         self._gateways = []
         self._refs = {}
-        self._next_serial_btn = None
         self._build()
         _lang_cbs.append(self._refresh_lang)
 
@@ -3350,14 +3373,6 @@ class GatewayTab(ctk.CTkScrollableFrame):
         self._refs["gw_year"] = lbl_year
         self.serial_year_var = tk.StringVar(value=str(datetime.now().year))
         ctk.CTkEntry(year_row, textvariable=self.serial_year_var, width=120).pack(side="left", padx=(4, 0))
-        self._next_serial_btn = ctk.CTkButton(
-            year_row,
-            text=t("serial_next_button"),
-            width=220,
-            command=self._add_gateway_with_next_serial,
-            font=ctk.CTkFont(size=12, weight="bold"),
-        )
-        self._next_serial_btn.pack(side="left", padx=(10, 0))
 
         _div(self)
         output_row = _row(self)
@@ -3380,6 +3395,7 @@ class GatewayTab(ctk.CTkScrollableFrame):
 
         self._status_lbl = ctk.CTkLabel(self, text=t("gw_ready"), text_color=C_HINT)
         self._status_lbl.pack(anchor="w", padx=18, pady=(0, 14))
+        self.after(150, self._show_next_gateway_serial_status)
 
     def _refresh_list(self):
         self.gateway_list.delete(0, tk.END)
@@ -3398,8 +3414,6 @@ class GatewayTab(ctk.CTkScrollableFrame):
         self._gw_cmd_title.configure(text=t("gw_shutdown_title"))
         self._gw_cmd_desc.configure(text=t("gw_shutdown_desc"))
         self._gw_cmd_btn.configure(text=t("gw_shutdown_copy"))
-        if self._next_serial_btn is not None:
-            self._next_serial_btn.configure(text=t("serial_next_button"))
         total = len(self._gateways)
         pages = (total + 4) // 5 if total else 0
         self._count_lbl.configure(text=t("gw_count").format(total=total, pages=pages))
@@ -3417,23 +3431,16 @@ class GatewayTab(ctk.CTkScrollableFrame):
         return int(selected[0])
 
     def _add_gateway(self):
-        dlg = GatewayDialog(self)
-        self.wait_window(dlg)
-        if dlg.result:
-            self._gateways.append(dlg.result)
-            self._refresh_list()
-
-    def _add_gateway_with_next_serial(self):
         try:
             initial_serial = self._next_gateway_serial()
         except Exception as exc:
-            messagebox.showerror(t("serial_error_title"), str(exc))
-            return
+            initial_serial = ""
         dlg = GatewayDialog(self, initial_serial=initial_serial)
         self.wait_window(dlg)
         if dlg.result:
             self._gateways.append(dlg.result)
             self._refresh_list()
+            self._show_next_gateway_serial_status()
 
     def _gateway_serial_numbers(self):
         serials = []
@@ -3445,19 +3452,23 @@ class GatewayTab(ctk.CTkScrollableFrame):
         return serials
 
     def _next_gateway_serial(self):
-        settings = _load_serial_settings()
-        registry = _serial_registry_fetch(settings)
-        repo_last = int(registry["families"]["GW"]["last_serial"] or 0)
+        repo_last = _next_available_serial("GW", settings=_load_serial_settings())[0] - 1
         local_serials = self._gateway_serial_numbers()
         next_value = max([repo_last, *local_serials] if local_serials else [repo_last]) + 1
         width = max(SERIAL_FAMILY_SETTINGS["GW"]["number_width"], len(str(next_value)))
-        self._status_lbl.configure(
-            text=t("serial_next_status").format(
-                family=_serial_family_name("GW"),
-                value=f"{next_value:0{width}d}",
-            )
-        )
         return f"{next_value:0{width}d}"
+
+    def _show_next_gateway_serial_status(self):
+        try:
+            next_value = self._next_gateway_serial()
+            self._status_lbl.configure(
+                text=t("serial_next_status").format(
+                    family=_serial_family_name("GW"),
+                    value=next_value,
+                )
+            )
+        except Exception as exc:
+            self._status_lbl.configure(text=str(exc))
 
     def _edit_gateway(self):
         idx = self._selected_index()
@@ -3470,6 +3481,7 @@ class GatewayTab(ctk.CTkScrollableFrame):
             self._gateways[idx] = dlg.result
             self._refresh_list()
             self.gateway_list.selection_set(idx)
+            self._show_next_gateway_serial_status()
 
     def _delete_gateway(self):
         idx = self._selected_index()
@@ -3478,6 +3490,7 @@ class GatewayTab(ctk.CTkScrollableFrame):
             return
         del self._gateways[idx]
         self._refresh_list()
+        self._show_next_gateway_serial_status()
 
     def _browse_pdf(self):
         path = filedialog.asksaveasfilename(
@@ -3914,34 +3927,9 @@ class SerialTab(ctk.CTkScrollableFrame):
         self._repo_field("serial_repo_token", self._repo_token_var, width=260, masked=True)
         self._repo_field("serial_repo_station", self._repo_station_var, width=220)
 
-        btn_row = _row(self)
-        self._repo_save_btn = ctk.CTkButton(
-            btn_row,
-            text=t("serial_repo_save"),
-            width=180,
-            command=self._save_repo_settings,
-            font=ctk.CTkFont(size=12, weight="bold"),
-        )
-        self._repo_save_btn.pack(side="left", padx=(0, 8))
-        self._repo_sync_btn = ctk.CTkButton(
-            btn_row,
-            text=t("serial_repo_sync"),
-            width=180,
-            command=self._sync_registry,
-            font=ctk.CTkFont(size=12, weight="bold"),
-        )
-        self._repo_sync_btn.pack(side="left", padx=(0, 8))
-        self._repo_publish_btn = ctk.CTkButton(
-            btn_row,
-            text=t("serial_repo_publish"),
-            width=220,
-            command=self._publish_registry_values,
-            font=ctk.CTkFont(size=12, weight="bold"),
-        )
-        self._repo_publish_btn.pack(side="left")
-
         family_card = ctk.CTkFrame(self, corner_radius=10, fg_color=("white", "#16202d"))
         family_card.pack(fill="x", padx=18, pady=(10, 8))
+        self._family_save_buttons = {}
         for idx, family in enumerate(SERIAL_FAMILY_ORDER):
             row = ctk.CTkFrame(family_card, fg_color="transparent")
             row.pack(fill="x", padx=14, pady=6)
@@ -3955,8 +3943,26 @@ class SerialTab(ctk.CTkScrollableFrame):
             lbl.pack(side="left")
             self._family_labels[family] = lbl
             ctk.CTkEntry(row, textvariable=self._family_vars[family], width=120).pack(side="left", padx=(4, 10))
+            btn = ctk.CTkButton(
+                row,
+                text=t("serial_repo_save_value").format(family=_serial_family_name(family)),
+                width=220,
+                command=lambda fam=family: self._save_single_family(fam),
+                font=ctk.CTkFont(size=12, weight="bold"),
+            )
+            btn.pack(side="left", padx=(6, 0))
+            self._family_save_buttons[family] = btn
             if idx < len(SERIAL_FAMILY_ORDER) - 1:
                 ctk.CTkFrame(family_card, height=1, fg_color=C_DIV).pack(fill="x", padx=12)
+
+        self._save_all_btn = ctk.CTkButton(
+            self,
+            text=t("serial_repo_save_all"),
+            width=240,
+            command=self._save_all_families,
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._save_all_btn.pack(anchor="w", padx=18, pady=(0, 8))
 
         self._registry_status_lbl = ctk.CTkLabel(self, text=t("serial_repo_ready"), text_color=C_HINT)
         self._registry_status_lbl.pack(anchor="w", padx=18, pady=(0, 8))
@@ -3964,6 +3970,7 @@ class SerialTab(ctk.CTkScrollableFrame):
         self._status_lbl = ctk.CTkLabel(self, text=t("serial_status"), text_color=C_HINT)
         self._status_lbl.pack(anchor="w", padx=18, pady=(4, 14))
         self._load_registry_values(_default_serial_registry())
+        self.after(150, self._auto_load_registry)
 
     def _repo_field(self, key, variable, width=None, masked=False):
         row = _row(self)
@@ -4027,26 +4034,54 @@ class SerialTab(ctk.CTkScrollableFrame):
             self._family_vars[family].set(str(registry["families"][family]["last_serial"]))
         self._status_lbl.configure(text=t("serial_status"))
 
-    def _sync_registry(self):
+    def _auto_load_registry(self):
         try:
             self._save_repo_settings()
-            registry = _serial_registry_fetch(self._serial_settings)
+            registry = _serial_registry_fetch_cached(settings=self._serial_settings, force=True)
             self._load_registry_values(registry)
             self._registry_status_lbl.configure(text=t("serial_repo_synced"))
         except Exception as exc:
+            self._registry_status_lbl.configure(text=str(exc))
+
+    def _build_updated_registry(self, families):
+        registry = _serial_registry_fetch(self._serial_settings)
+        station = self._serial_settings.get("station_name", DEFAULT_SERIAL_SETTINGS["station_name"])
+        for family in families:
+            entry = registry["families"][family]
+            value = int(self._family_vars[family].get().strip() or "0")
+            width = SERIAL_FAMILY_SETTINGS[family]["number_width"]
+            entry["last_serial"] = value
+            entry["updated_by"] = station
+            entry["updated_at"] = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+            entry["last_count"] = 0
+            entry["last_range"] = f"{value:0{width}d}-{value:0{width}d}"
+            registry["families"][family] = entry
+        return registry
+
+    def _save_single_family(self, family):
+        try:
+            if not _prompt_serial_password(self):
+                return
+            self._save_repo_settings()
+            registry = self._build_updated_registry([family])
+            _serial_registry_push(self._serial_settings, registry, f"Manual serial registry update: {family}")
+            self._registry_status_lbl.configure(
+                text=t("serial_repo_value_saved").format(
+                    family=_serial_family_name(family),
+                    value=self._family_vars[family].get().strip() or "0",
+                )
+            )
+        except Exception as exc:
             messagebox.showerror(t("serial_error_title"), str(exc))
 
-    def _publish_registry_values(self):
+    def _save_all_families(self):
         try:
+            if not _prompt_serial_password(self):
+                return
             self._save_repo_settings()
-            registry = _serial_registry_fetch(self._serial_settings)
-            for family in SERIAL_FAMILY_ORDER:
-                entry = registry["families"][family]
-                entry["last_serial"] = int(self._family_vars[family].get().strip() or "0")
-                entry["updated_by"] = self._serial_settings.get("station_name", DEFAULT_SERIAL_SETTINGS["station_name"])
-                entry["updated_at"] = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
-            _serial_registry_push(self._serial_settings, registry, "Manual serial registry update")
-            self._registry_status_lbl.configure(text=t("serial_repo_published"))
+            registry = self._build_updated_registry(SERIAL_FAMILY_ORDER)
+            _serial_registry_push(self._serial_settings, registry, "Manual serial registry update: all families")
+            self._registry_status_lbl.configure(text=t("serial_repo_all_saved"))
         except Exception as exc:
             messagebox.showerror(t("serial_error_title"), str(exc))
 
@@ -4066,9 +4101,9 @@ class SerialTab(ctk.CTkScrollableFrame):
             widget.configure(text=t(key))
         for family, widget in self._family_labels.items():
             widget.configure(text=_serial_family_name(family))
-        self._repo_save_btn.configure(text=t("serial_repo_save"))
-        self._repo_sync_btn.configure(text=t("serial_repo_sync"))
-        self._repo_publish_btn.configure(text=t("serial_repo_publish"))
+        for family, button in self._family_save_buttons.items():
+            button.configure(text=t("serial_repo_save_value").format(family=_serial_family_name(family)))
+        self._save_all_btn.configure(text=t("serial_repo_save_all"))
         self._registry_status_lbl.configure(text=t("serial_repo_ready"))
         self._status_lbl.configure(text=t("serial_status"))
 
