@@ -4,20 +4,20 @@ Este repositorio contiene:
 
 - `generador_csv.py`: codigo fuente principal de la aplicacion.
 - `update_manifest.json`: manifiesto usado por la actualizacion automatica.
-- `downloads/Device_Manager_v57.exe`: ejecutable oficial actual.
+- `downloads/Device_Manager_v58.exe`: ejecutable oficial actual.
 - `publish_update.bat`: script para publicar nuevas versiones.
 
 ## Version actual
 
-- `1.57`
+- `1.58`
 
-## Que corrige la 1.57
+## Que corrige la 1.58
 
-- Carga automaticamente el siguiente serial disponible desde GitHub en `RTU`, `GW`, `I-TIC` y `TIC12`.
-- Quita los botones manuales de “usar siguiente serial GitHub” en las secciones operativas.
-- La pestaña `Serial` deja solo botones para guardar un valor por familia o todos los valores.
-- Los guardados manuales en GitHub ahora piden contraseña.
-- Publicacion del nuevo ejecutable `Device_Manager_v57.exe`.
+- Oculta los campos tecnicos de configuracion en la pestaña `Serial`.
+- Si falta el token de GitHub, lo pide solo cuando realmente hace falta guardar.
+- Corrige el titulo de ventana `Device Manager - TECNIDRO`.
+- Limpia la vista previa de estructura del proyecto para que no salga texto roto.
+- Publicacion del nuevo ejecutable `Device_Manager_v58.exe`.
 
 ## Actualizacion automatica
 

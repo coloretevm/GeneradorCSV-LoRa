@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.58
+
+- Nascosti i campi tecnici della scheda `Serial` che non servono all uso quotidiano.
+- Il salvataggio manuale continua a funzionare e, se manca il token, lo chiede solo al momento del salvataggio.
+- Corretto il titolo finestra `Device Manager - TECNIDRO`.
+- Ripulita la vista struttura del progetto con testo ASCII semplice.
+- Nuova build ufficiale pubblicata come `Device_Manager_v58.exe`.
+
 ## 1.57
 
 - Le sezioni `RTU`, `GW`, `I-TIC` e `TIC12` caricano automaticamente il prossimo seriale disponibile da GitHub all apertura del programma.

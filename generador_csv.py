@@ -18,8 +18,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.57"
-APP_BUILD_NAME = "Device_Manager_v57"
+APP_VERSION = "1.58"
+APP_BUILD_NAME = "Device_Manager_v58"
 SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
@@ -1125,6 +1125,27 @@ def _prompt_serial_password(parent):
         messagebox.showerror(t("serial_error_title"), t("serial_password_error"), parent=parent)
         return False
     return True
+
+
+def _ensure_serial_token(parent, settings):
+    token = str(settings.get("token", "")).strip() or os.environ.get("DEVICE_MANAGER_GITHUB_TOKEN", "").strip()
+    if token:
+        settings["token"] = token
+        return settings
+    token = simpledialog.askstring(
+        "GitHub token",
+        "Inserisci il GitHub token per salvare i seriali su GitHub:",
+        parent=parent,
+        show="*",
+    )
+    if token is None:
+        return None
+    token = token.strip()
+    if not token:
+        raise ValueError(t("serial_repo_error_missing_token"))
+    settings["token"] = token
+    _save_serial_settings(settings)
+    return settings
 
 
 def check_for_updates(parent, interactive=True, status_cb=None):
@@ -2617,7 +2638,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
         self._btn_all.configure(text=t('btn_gen_all'))
 
     def _browse_root(self):
-        p = filedialog.askdirectory(title="Seleccionar carpeta raÃ­z")
+        p = filedialog.askdirectory(title="Seleccionar carpeta raiz")
         if p:
             self.root_folder_var.set(p)
 
@@ -2639,7 +2660,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
         self._prev_lbl.configure(text=txt)
 
     def _update_struct(self, *_):
-        root   = self.root_folder_var.get().strip() or "â€¦"
+        root   = self.root_folder_var.get().strip() or "..."
         name   = self.proj_name_var.get().strip()   or "NombreProyecto"
         try:
             n = int(self.p_to_var.get()) - int(self.p_from_var.get()) + 1
@@ -2647,10 +2668,10 @@ class ProjectTab(ctk.CTkScrollableFrame):
             n = "?"
         pfx = self.p_prefix_var.get() if hasattr(self, 'p_prefix_var') else ""
         txt = (
-            f"  ðŸ“  {root}/{name}/\n"
-            f"       â”œâ”€â”€ CSV/         â†’  {name}.csv\n"
-            f"       â”œâ”€â”€ JSON/        â†’  {n} archivos  ({pfx}â€¦).JSON\n"
-            f"       â””â”€â”€ etiquette/   â†’  {name}.pdf"
+            f"  {root}/{name}/\n"
+            f"    CSV/       -> {name}.csv\n"
+            f"    JSON/      -> {n} archivos ({pfx}...).JSON\n"
+            f"    etichette/ -> {name}.pdf"
         )
         self._struct_lbl.configure(text=txt)
 
@@ -2787,10 +2808,10 @@ class ProjectTab(ctk.CTkScrollableFrame):
                 ))
             messagebox.showinfo("Ã‰xito",
                 f"Proyecto generado correctamente.\n\n"
-                f"  ðŸ“  {proj_name}/\n"
-                f"  â”œâ”€â”€ CSV/       â†’  {proj_name}.csv\n"
-                f"  â”œâ”€â”€ JSON/      â†’  {num_devices} archivos .JSON\n"
-                f"  â””â”€â”€ etiquette/ â†’  {proj_name}.pdf\n\n"
+                f"  {proj_name}/\n"
+                f"  CSV/       -> {proj_name}.csv\n"
+                f"  JSON/      -> {num_devices} archivos .JSON\n"
+                f"  etichette/ -> {proj_name}.pdf\n\n"
                 f"  Dispositivos:  {num_devices}\n"
                 f"  VÃ¡lvula:       {'Motorizzata' if valve=='motorizzata' else 'ELBA'}\n"
                 f"  Allarme:       {'ON' if allarme else 'OFF'}\n"
@@ -3921,12 +3942,6 @@ class SerialTab(ctk.CTkScrollableFrame):
         )
         self._repo_desc_lbl.pack(anchor="w", padx=18, pady=(0, 8))
 
-        self._repo_field("serial_repo_path", self._repo_path_var)
-        self._repo_field("serial_repo_branch", self._repo_branch_var, width=140)
-        self._repo_field("serial_repo_file", self._repo_file_var)
-        self._repo_field("serial_repo_token", self._repo_token_var, width=260, masked=True)
-        self._repo_field("serial_repo_station", self._repo_station_var, width=220)
-
         family_card = ctk.CTkFrame(self, corner_radius=10, fg_color=("white", "#16202d"))
         family_card.pack(fill="x", padx=18, pady=(10, 8))
         self._family_save_buttons = {}
@@ -4063,6 +4078,10 @@ class SerialTab(ctk.CTkScrollableFrame):
             if not _prompt_serial_password(self):
                 return
             self._save_repo_settings()
+            ensured = _ensure_serial_token(self, dict(self._serial_settings))
+            if ensured is None:
+                return
+            self._serial_settings = ensured
             registry = self._build_updated_registry([family])
             _serial_registry_push(self._serial_settings, registry, f"Manual serial registry update: {family}")
             self._registry_status_lbl.configure(
@@ -4079,6 +4098,10 @@ class SerialTab(ctk.CTkScrollableFrame):
             if not _prompt_serial_password(self):
                 return
             self._save_repo_settings()
+            ensured = _ensure_serial_token(self, dict(self._serial_settings))
+            if ensured is None:
+                return
+            self._serial_settings = ensured
             registry = self._build_updated_registry(SERIAL_FAMILY_ORDER)
             _serial_registry_push(self._serial_settings, registry, "Manual serial registry update: all families")
             self._registry_status_lbl.configure(text=t("serial_repo_all_saved"))
@@ -4111,7 +4134,7 @@ class SerialTab(ctk.CTkScrollableFrame):
 class App:
     def __init__(self, root: ctk.CTk):
         self.root = root
-        root.title("Device Manager â€” TECNIDRO")
+        root.title("Device Manager - TECNIDRO")
         # Centrar en pantalla al 90% del monitor disponible (mÃ¡x 1200Ã—960)
         root.update_idletasks()
         sw = root.winfo_screenwidth()
@@ -4182,7 +4205,7 @@ class App:
         bar = ctk.CTkFrame(root, corner_radius=0, height=24, fg_color=C_BAR_BG)
         bar.pack(fill="x", side="bottom")
         bar.pack_propagate(False)
-        ctk.CTkLabel(bar, text=f"  Generador CSV & Etichette PDF  â€”  v{APP_VERSION}",
+        ctk.CTkLabel(bar, text=f"  Generador CSV & Etichette PDF - v{APP_VERSION}",
                      font=ctk.CTkFont(size=10),
                      text_color=C_BAR_TEXT).pack(side="left", padx=8)
         ctk.CTkLabel(bar, text="by Manuel Rodriguez  ",
