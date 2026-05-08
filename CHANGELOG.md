@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.56
+
+- Corretti i testi corrotti nella scheda `Language`.
+- Le opzioni lingua usano etichette semplici e stabili: `ES Espanol`, `EN English`, `IT Italiano`.
+- Sistemato anche il nome della scheda `Language` nella barra principale.
+- Nuova build ufficiale pubblicata come `Device_Manager_v56.exe`.
+
 ## 1.55
 
 - Il registro seriale non dipende piu dalla cartella locale del repository.

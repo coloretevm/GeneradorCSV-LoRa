@@ -18,8 +18,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.55"
-APP_BUILD_NAME = "Device_Manager_v55"
+APP_VERSION = "1.56"
+APP_BUILD_NAME = "Device_Manager_v56"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
 DEFAULT_UPDATE_SETTINGS = {
@@ -1842,12 +1842,12 @@ class LangTab(ctk.CTkFrame):
         # Selector de idioma
         self._lang_seg = ctk.CTkSegmentedButton(
             self,
-            values=["ðŸ‡ªðŸ‡¸  EspaÃ±ol", "ðŸ‡¬ðŸ‡§  English", "ðŸ‡®ðŸ‡¹  Italiano"],
+            values=["ES Espanol", "EN English", "IT Italiano"],
             command=self._on_lang,
             font=ctk.CTkFont(size=13),
             height=44, width=420,
         )
-        self._lang_seg.set("ðŸ‡ªðŸ‡¸  EspaÃ±ol")
+        self._lang_seg.set({"es": "ES Espanol", "en": "EN English", "it": "IT Italiano"}.get(_cur_lang[0], "IT Italiano"))
         self._lang_seg.pack(pady=(0, 40))
 
         # Divisor
@@ -1907,7 +1907,7 @@ class LangTab(ctk.CTkFrame):
         self._lbl_upd_status.pack(pady=(4, 0))
 
     def _on_lang(self, value):
-        code_map = {"ðŸ‡ªðŸ‡¸  EspaÃ±ol": "es", "ðŸ‡¬ðŸ‡§  English": "en", "ðŸ‡®ðŸ‡¹  Italiano": "it"}
+        code_map = {"ES Espanol": "es", "EN English": "en", "IT Italiano": "it"}
         set_lang(code_map.get(value, "es"))
         # Actualizar el theme segmented button con los textos del nuevo idioma,
         # preservando la selecciÃ³n actual
@@ -1939,6 +1939,7 @@ class LangTab(ctk.CTkFrame):
     def _refresh_lang(self):
         self._lbl_title.configure(text=t('lang_title'))
         self._lbl_sub.configure(text=t('lang_sub'))
+        self._lang_seg.set({"es": "ES Espanol", "en": "EN English", "it": "IT Italiano"}.get(_cur_lang[0], "IT Italiano"))
         self._lbl_theme.configure(text=t('theme_label'))
         self._lbl_upd_title.configure(text=t('upd_title'))
         self._lbl_upd_ver.configure(text=f"{t('upd_version')} {APP_VERSION}")
@@ -4111,14 +4112,14 @@ class App:
         self.tabview = ctk.CTkTabview(root, corner_radius=8, border_width=0)
         self.tabview.pack(fill="both", expand=True, padx=10, pady=(6, 4))
 
-        # PestaÃ±as principales: RTU  |  GW  |  I-TIC  |  TIC12  |  FW Version  |  âš™ Language
+        # Pestañas principales: RTU | GW | I-TIC | TIC12 | FW Version | Language
         T_RTU   = "RTU"
         T_GW    = "GW"
         T_ITIC  = "I-TIC"
         T_TIC12 = "TIC12"
         T_FW    = "FW Version"
         T_SERIAL = "Serial"
-        T_LANG  = "âš™  Language"
+        T_LANG  = "Language"
 
         for name in (T_RTU, T_GW, T_ITIC, T_TIC12, T_FW, T_SERIAL, T_LANG):
             self.tabview.add(name)

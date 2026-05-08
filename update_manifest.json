@@ -1,5 +1,5 @@
 {
-  "version": "1.55",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v55.exe",
-  "notes": "Device Manager v1.55 legge il registro seriale direttamente da GitHub via internet e supporta il salvataggio tramite API GitHub, cosi funziona anche sugli altri PC senza il clone locale del repo."
+  "version": "1.56",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v56.exe",
+  "notes": "Device Manager v1.56 corregge i testi corrotti nella scheda Language e mantiene il supporto al registro seriale GitHub via internet."
 }
