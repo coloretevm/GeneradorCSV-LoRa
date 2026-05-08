@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.55
+
+- Il registro seriale non dipende piu dalla cartella locale del repository.
+- Lettura dei seriali via URL RAW GitHub, quindi `Usa il prossimo seriale GitHub` funziona anche sugli altri PC.
+- Scrittura dei nuovi seriali via API GitHub con token configurabile nella scheda `Serial`.
+- Nuova build ufficiale pubblicata come `Device_Manager_v55.exe`.
+
 ## 1.54
 
 - Aggiunto `GW` al registro seriali condiviso su GitHub.

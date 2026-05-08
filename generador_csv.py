@@ -1,6 +1,7 @@
-import tkinter as tk
+﻿import tkinter as tk
 from tkinter import filedialog, messagebox
 import customtkinter as ctk
+import base64
 import csv
 import json
 import copy
@@ -17,8 +18,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.54"
-APP_BUILD_NAME = "Device_Manager_v54"
+APP_VERSION = "1.55"
+APP_BUILD_NAME = "Device_Manager_v55"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
 DEFAULT_UPDATE_SETTINGS = {
@@ -26,9 +27,10 @@ DEFAULT_UPDATE_SETTINGS = {
     "auto_check": True,
 }
 DEFAULT_SERIAL_SETTINGS = {
-    "repo_path": r"C:\Users\manuel\Documents\New project\GeneradorCSV-LoRa",
+    "registry_url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/serial_registry.json",
+    "api_url": "https://api.github.com/repos/coloretevm/GeneradorCSV-LoRa/contents/serial_registry.json",
     "branch": "main",
-    "registry_file": "serial_registry.json",
+    "token": "",
     "station_name": os.environ.get("COMPUTERNAME", "PC"),
 }
 SERIAL_FAMILY_ORDER = ("RTU", "GW", "I-TIC", "TIC12")
@@ -39,7 +41,7 @@ SERIAL_FAMILY_SETTINGS = {
     "TIC12": {"entry_key": "serial_family_tic12", "number_width": 4},
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _resource(filename):
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, filename)
@@ -199,6 +201,10 @@ def _serial_registry_write_local(registry_path, registry):
 
 
 def _serial_registry_pull(settings):
+    registry_url = str(settings.get("registry_url", "")).strip()
+    if registry_url.lower().startswith(("http://", "https://")):
+        return _normalize_serial_registry(_download_json(registry_url))
+
     repo_path, _, registry_path = _serial_registry_full_path(settings)
     branch = str(settings.get("branch", "main")).strip() or "main"
     _git_run(repo_path, "pull", "--rebase", "origin", branch)
@@ -206,10 +212,46 @@ def _serial_registry_pull(settings):
 
 
 def _serial_registry_push(settings, registry, message):
-    repo_path, rel_path, registry_path = _serial_registry_full_path(settings)
-    branch = str(settings.get("branch", "main")).strip() or "main"
     registry = _normalize_serial_registry(registry)
     registry["updated_at"] = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    api_url = str(settings.get("api_url", "")).strip()
+    branch = str(settings.get("branch", "main")).strip() or "main"
+    token = str(settings.get("token", "")).strip() or os.environ.get("DEVICE_MANAGER_GITHUB_TOKEN", "").strip()
+
+    if api_url.lower().startswith(("http://", "https://")):
+        if not token:
+            raise ValueError(t("serial_repo_error_missing_token"))
+
+        content_bytes = json.dumps(registry, indent=2, ensure_ascii=False).encode("utf-8")
+        payload = {
+            "message": message,
+            "content": base64.b64encode(content_bytes).decode("ascii"),
+            "branch": branch,
+        }
+        try:
+            current = _request_json(
+                f"{api_url}?ref={branch}",
+                headers=_github_api_headers(token),
+            )
+            if isinstance(current, dict) and current.get("sha"):
+                payload["sha"] = current["sha"]
+        except urlerror.HTTPError as exc:
+            if exc.code != 404:
+                detail = exc.read().decode("utf-8", errors="replace")
+                raise RuntimeError(detail or str(exc))
+
+        _request_json(
+            api_url,
+            headers={
+                **_github_api_headers(token),
+                "Content-Type": "application/json",
+            },
+            data=json.dumps(payload).encode("utf-8"),
+            method="PUT",
+        )
+        return registry
+
+    repo_path, rel_path, registry_path = _serial_registry_full_path(settings)
     _serial_registry_write_local(registry_path, registry)
     _git_run(repo_path, "add", rel_path)
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -315,10 +357,24 @@ def _parse_version(value):
     return tuple(parts or [0])
 
 
-def _download_json(url):
-    req = urlrequest.Request(url, headers={"User-Agent": f"{APP_BUILD_NAME}/{APP_VERSION}"})
+def _request_json(url, headers=None, data=None, method=None):
+    req_headers = {"User-Agent": f"{APP_BUILD_NAME}/{APP_VERSION}"}
+    if headers:
+        req_headers.update(headers)
+    req = urlrequest.Request(url, headers=req_headers, data=data, method=method)
     with urlrequest.urlopen(req, timeout=12) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _download_json(url, headers=None):
+    return _request_json(url, headers=headers)
+
+
+def _github_api_headers(token=""):
+    headers = {"Accept": "application/vnd.github+json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 
 def _download_binary(url, target_path):
@@ -342,14 +398,14 @@ def _launch_windows_downloaded_app(downloaded_exe):
     subprocess.Popen(["cmd", "/c", bat_path], creationflags=creation_flags)
 
 def _make_logo_images(display_h=52):
-    """Carga logo.png a alta resolución y devuelve (img_light, img_dark).
-    Trabaja en 2× para HiDPI y usa LANCZOS para suavizado óptimo.
+    """Carga logo.png a alta resoluciÃ³n y devuelve (img_light, img_dark).
+    Trabaja en 2Ã— para HiDPI y usa LANCZOS para suavizado Ã³ptimo.
     Light: fondo blanco removido, colores originales.
     Dark:  mismos pixels recoloreados a blanco puro, fondo transparente.
     """
     try:
         src = Image.open(_resource("logo.png")).convert("RGBA")
-        # Escalar a 2× resolución interna para HiDPI (CTkImage lo gestiona)
+        # Escalar a 2Ã— resoluciÃ³n interna para HiDPI (CTkImage lo gestiona)
         w, h = src.size
         render_h = display_h * 2
         render_w = int(w * render_h / h)
@@ -359,7 +415,7 @@ def _make_logo_images(display_h=52):
         light_px, dark_px = [], []
         for r, g, b, a in pixels:
             lum = 0.299*r + 0.587*g + 0.114*b   # luminancia perceptual
-            if lum > 220 and a > 200:            # fondo blanco → transparente
+            if lum > 220 and a > 200:            # fondo blanco â†’ transparente
                 light_px.append((255, 255, 255, 0))
                 dark_px.append((0, 0, 0, 0))
             else:
@@ -370,7 +426,7 @@ def _make_logo_images(display_h=52):
         img_light.putdata(light_px)
         img_dark = Image.new("RGBA", src.size)
         img_dark.putdata(dark_px)
-        # display_size en píxeles lógicos (CTkImage usará el doble en HiDPI)
+        # display_size en pÃ­xeles lÃ³gicos (CTkImage usarÃ¡ el doble en HiDPI)
         dw = int(w * display_h / h)
         return img_light, img_dark, dw, display_h
     except Exception:
@@ -407,84 +463,84 @@ def _make_black_logo_reader():
     except Exception:
         return None
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Traducciones
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 TRANSLATIONS = {
     'es': {
-        'csv_title':     'Generador de CSV — Dispositivos LoRa',
+        'csv_title':     'Generador de CSV â€” Dispositivos LoRa',
         'sec_name':      'Nombre del dispositivo',
         'lbl_prefix':    'Prefijo:',
         'lbl_from':      'Desde:',
         'lbl_to':        'Hasta:',
-        'prev_error':    "['hasta' debe ser ≥ 'desde']",
-        'prev_fmt':      '→ {n} dispositivos:  {a}  …  {b}',
-        'sec_lora':      'Configuración de red LoRa',
+        'prev_error':    "['hasta' debe ser â‰¥ 'desde']",
+        'prev_fmt':      'â†’ {n} dispositivos:  {a}  â€¦  {b}',
+        'sec_lora':      'ConfiguraciÃ³n de red LoRa',
         'lbl_model':     'Modelo (Model):',
         'lbl_deveui':    'DevEUI inicial (16 hex):',
-        'lbl_devaddr_i': 'DevAddr: extraído automáticamente de los últimos 8 caracteres del DevEUI',
+        'lbl_devaddr_i': 'DevAddr: extraÃ­do automÃ¡ticamente de los Ãºltimos 8 caracteres del DevEUI',
         'lbl_newskey':   'NewSKey (32 hex):',
         'lbl_appskey':   'AppSKey (32 hex):',
         'sec_coords':    'Coordenadas (mismas para todos)',
         'lbl_lat':       'Latitud:',
         'lbl_lon':       'Longitud:',
-        'sec_extra':     'Parámetros adicionales',
+        'sec_extra':     'ParÃ¡metros adicionales',
         'lbl_tag':       'Tag:',
         'lbl_alias':     'Alias:',
         'lbl_out_file':  'Archivo de salida:',
         'btn_gen_csv':   'Generar CSV',
         'lbl_ready':     'Listo.',
-        'labels_title':  'Generador de Etichette — PDF A4',
-        'sec_opt1':      'Opción 1 – Cargar desde CSV generado',
+        'labels_title':  'Generador de Etichette â€” PDF A4',
+        'sec_opt1':      'OpciÃ³n 1 â€“ Cargar desde CSV generado',
         'lbl_csv_file':  'Archivo CSV:',
         'btn_load':      'Cargar',
-        'sec_opt2':      'Opción 2 – Ingresar datos manualmente',
+        'sec_opt2':      'OpciÃ³n 2 â€“ Ingresar datos manualmente',
         'lbl_name_pfx':  'Prefijo nombre:',
         'lbl_deveui_m':  'DevEUI inicial (16 hex):',
         'sec_serial':    'Serial number',
         'lbl_ser_start': 'Serial inicio:',
-        'lbl_year':      'Año:',
-        'lbl_ser_fmt':   'Formato en la etiqueta: 04906/2026  →  04907/2026  →  ...',
+        'lbl_year':      'AÃ±o:',
+        'lbl_ser_fmt':   'Formato en la etiqueta: 04906/2026  â†’  04907/2026  â†’  ...',
         'sec_opts':      'Opciones de la etiqueta',
         'chk_bt':        'Incluir fila BLUETOOTH  (TECNIDROBT + DevAddr)',
         'chk_rtu':       'Etichetta RTU in tubo  (header TECNIDRO / HYDRONET-RTU, sin Bluetooth)',
-        'chk_lc':        'Etichetta RTU LORACONT  (23mm × 87mm, header TECNIDRO / LORACONT-RTU)',
+        'chk_lc':        'Etichetta RTU LORACONT  (23mm Ã— 87mm, header TECNIDRO / LORACONT-RTU)',
         'lbl_pdf_out':   'Archivo PDF de salida:',
         'btn_gen_pdf':   'Generar PDF Etichette',
         'lang_title':    'Seleccionar idioma',
         'lang_sub':      'Idioma de la interfaz:',
-        'theme_label':   'Tema de la aplicación:',
-        'theme_dark':    '🌙  Oscuro',
-        'theme_light':   '☀  Claro',
+        'theme_label':   'Tema de la aplicaciÃ³n:',
+        'theme_dark':    'ðŸŒ™  Oscuro',
+        'theme_light':   'â˜€  Claro',
         'upd_title':     'Actualizaciones',
-        'upd_version':   'Versión actual:',
+        'upd_version':   'VersiÃ³n actual:',
         'upd_source':    'URL del manifiesto:',
         'upd_auto':      'Buscar actualizaciones al abrir',
-        'upd_save':      'Guardar configuración',
+        'upd_save':      'Guardar configuraciÃ³n',
         'upd_check':     'Buscar actualizaciones',
-        'upd_saved':     'Configuración de actualización guardada.',
+        'upd_saved':     'ConfiguraciÃ³n de actualizaciÃ³n guardada.',
         'upd_status_idle':'Configura una URL de manifiesto para activar las actualizaciones online.',
         'upd_status_checking':'Comprobando actualizaciones...',
-        'upd_status_latest':'Ya tienes la versión más reciente.',
-        'upd_status_available':'Nueva versión disponible: {version}',
-        'upd_status_disabled':'Las actualizaciones online están desactivadas.',
-        'upd_error_title':'Actualización',
-        'upd_error_no_url':'Escribe la URL del manifiesto de actualización.',
-        'upd_error_bad_manifest':'El manifiesto no es válido o le faltan datos.',
-        'upd_error_network':'No se pudo comprobar la actualización.\n{error}',
-        'upd_error_download':'No se pudo descargar la actualización.\n{error}',
-        'upd_confirm_title':'Nueva versión disponible',
-        'upd_confirm_body':'Versión actual: {current}\nNueva versión: {latest}\n\n¿Quieres descargarla e instalarla ahora?',
-        'upd_download_title':'Guardar actualización como...',
-        'upd_success_restart':'La actualización se descargó. El programa se cerrará para instalar la nueva versión.',
+        'upd_status_latest':'Ya tienes la versiÃ³n mÃ¡s reciente.',
+        'upd_status_available':'Nueva versiÃ³n disponible: {version}',
+        'upd_status_disabled':'Las actualizaciones online estÃ¡n desactivadas.',
+        'upd_error_title':'ActualizaciÃ³n',
+        'upd_error_no_url':'Escribe la URL del manifiesto de actualizaciÃ³n.',
+        'upd_error_bad_manifest':'El manifiesto no es vÃ¡lido o le faltan datos.',
+        'upd_error_network':'No se pudo comprobar la actualizaciÃ³n.\n{error}',
+        'upd_error_download':'No se pudo descargar la actualizaciÃ³n.\n{error}',
+        'upd_confirm_title':'Nueva versiÃ³n disponible',
+        'upd_confirm_body':'VersiÃ³n actual: {current}\nNueva versiÃ³n: {latest}\n\nÂ¿Quieres descargarla e instalarla ahora?',
+        'upd_download_title':'Guardar actualizaciÃ³n como...',
+        'upd_success_restart':'La actualizaciÃ³n se descargÃ³. El programa se cerrarÃ¡ para instalar la nueva versiÃ³n.',
         'json_title':    'Generador de archivos JSON',
-        'sec_valve':     'Tipo de válvula',
+        'sec_valve':     'Tipo de vÃ¡lvula',
         'sec_allarme':   'Allarme Sportello',
         'sec_adc':       'ADC',
-        'sec_deveui_j':  'Parámetros de radio',
+        'sec_deveui_j':  'ParÃ¡metros de radio',
         'lbl_deveui_j':  'DevEUI inicial (16 hex):',
-        'lbl_devaddr_j': 'DevAddr: extraído automáticamente de los últimos 8 caracteres del DevEUI',
-        'sec_send_params': 'Parámetros de envío',
+        'lbl_devaddr_j': 'DevAddr: extraÃ­do automÃ¡ticamente de los Ãºltimos 8 caracteres del DevEUI',
+        'sec_send_params': 'ParÃ¡metros de envÃ­o',
         'lbl_sendinterval':'Send Interval (ms):',
         'sec_out_json':  'Carpeta de salida',
         'lbl_out_folder':'Carpeta:',
@@ -492,24 +548,24 @@ TRANSLATIONS = {
         'tic12_title':  'Generador de Etiquetas TIC12',
         'itic_title':   'Generador de Etiquetas I-TIC',
         'sec_tic_dev':  'Dispositivos',
-        'lbl_tic_from': 'Desde (número):',
-        'lbl_tic_to':   'Hasta (número):',
-        'lbl_tic_yr':   'Año:',
-        'lbl_tic_fw':   'Versión FW:',
+        'lbl_tic_from': 'Desde (nÃºmero):',
+        'lbl_tic_to':   'Hasta (nÃºmero):',
+        'lbl_tic_yr':   'AÃ±o:',
+        'lbl_tic_fw':   'VersiÃ³n FW:',
         'sec_tic_out':  'Archivo de salida',
         'lbl_tic_pdf':  'PDF de salida:',
         'btn_tic_gen':  'Generar PDF',
         'proj_title':   'Generador de Proyecto Completo',
-        'sec_proj_loc': 'Ubicación del proyecto',
-        'lbl_root_fld': 'Carpeta raíz:',
+        'sec_proj_loc': 'UbicaciÃ³n del proyecto',
+        'lbl_root_fld': 'Carpeta raÃ­z:',
         'lbl_proj_nm':  'Nombre del proyecto:',
         'sec_proj_dev': 'Dispositivos',
-        'sec_proj_csv': 'Parámetros CSV',
+        'sec_proj_csv': 'ParÃ¡metros CSV',
         'sec_proj_lbl': 'Tipo de etiqueta',
         'sec_proj_ser': 'Serial (para PDF)',
-        'sec_proj_jsn': 'Parámetros JSON',
-        'btn_gen_all':  '⚡  GENERAR TODO  —  CSV + JSON + Etichette',
-        'proj_struct':  'Se creará la estructura:',
+        'sec_proj_jsn': 'ParÃ¡metros JSON',
+        'btn_gen_all':  'âš¡  GENERAR TODO  â€”  CSV + JSON + Etichette',
+        'proj_struct':  'Se crearÃ¡ la estructura:',
         'gw_title': 'Gateway',
         'gw_desc': 'Genera etiquetas GW en formato A4 replicando el modelo del archivo Excel. Cada pagina coloca hasta 5 gateways y cada gateway pide sus datos manualmente.',
         'gw_section_list': 'Gateways',
@@ -587,22 +643,24 @@ TRANSLATIONS = {
         'serial_error_missing': 'No se encontro el archivo:\n{filename}',
         'serial_save_title': 'Guardar Hyperterminal como...',
         'serial_repo_title': 'Registro serial GitHub',
-        'serial_repo_desc': 'Sincroniza el ultimo serial usado entre los PC de la oficina usando el repositorio GitHub.',
-        'serial_repo_path': 'Carpeta local del repo:',
+        'serial_repo_desc': 'Sincroniza el ultimo serial usado entre los PC de la oficina directamente por internet usando GitHub.',
+        'serial_repo_path': 'URL registro RAW:',
         'serial_repo_branch': 'Branch:',
-        'serial_repo_file': 'Archivo registro:',
+        'serial_repo_file': 'URL API GitHub:',
+        'serial_repo_token': 'GitHub token:',
         'serial_repo_station': 'Nombre PC / usuario:',
         'serial_repo_save': 'Guardar configuracion',
         'serial_repo_sync': 'Sincronizar desde GitHub',
         'serial_repo_publish': 'Guardar contadores en GitHub',
-        'serial_repo_ready': 'Configura la ruta del repositorio y sincroniza el registro serial.',
+        'serial_repo_ready': 'Configura las URL de GitHub, el token y sincroniza el registro serial.',
         'serial_repo_saved': 'Configuracion serial guardada.',
         'serial_repo_synced': 'Registro serial sincronizado desde GitHub.',
         'serial_repo_published': 'Contadores serial actualizados en GitHub.',
         'serial_repo_status_format': '{family}: ultimo {serial}  |  lote {batch}  |  {who}',
         'serial_repo_status_empty': 'Sin datos',
-        'serial_repo_error_missing_path': 'Escribe la carpeta local del repositorio GitHub.',
-        'serial_repo_error_missing_repo': 'La carpeta del repositorio no existe:\n{path}',
+        'serial_repo_error_missing_path': 'Escribe la URL RAW del registro serial en GitHub.',
+        'serial_repo_error_missing_repo': 'La configuracion del repositorio GitHub no es valida:\n{path}',
+        'serial_repo_error_missing_token': 'Falta el GitHub token. Configuralo en la pestana Serial para poder guardar los nuevos seriales.',
         'serial_repo_error_overlap': '{family} ya llega hasta {current}. El serial solicitado ({requested}) repetiria codigos.',
         'serial_next_button': 'Usar siguiente serial GitHub',
         'serial_next_status': '{family}: siguiente serial sugerido {value}',
@@ -613,13 +671,13 @@ TRANSLATIONS = {
         'serial_family_tic12': 'TIC12',
     },
     'en': {
-        'csv_title':     'CSV Generator — LoRa Devices',
+        'csv_title':     'CSV Generator â€” LoRa Devices',
         'sec_name':      'Device name',
         'lbl_prefix':    'Prefix:',
         'lbl_from':      'From:',
         'lbl_to':        'To:',
-        'prev_error':    "['to' must be ≥ 'from']",
-        'prev_fmt':      '→ {n} devices:  {a}  …  {b}',
+        'prev_error':    "['to' must be â‰¥ 'from']",
+        'prev_fmt':      'â†’ {n} devices:  {a}  â€¦  {b}',
         'sec_lora':      'LoRa network configuration',
         'lbl_model':     'Model:',
         'lbl_deveui':    'Initial DevEUI (16 hex):',
@@ -635,28 +693,28 @@ TRANSLATIONS = {
         'lbl_out_file':  'Output file:',
         'btn_gen_csv':   'Generate CSV',
         'lbl_ready':     'Ready.',
-        'labels_title':  'Label Generator — PDF A4',
-        'sec_opt1':      'Option 1 – Load from generated CSV',
+        'labels_title':  'Label Generator â€” PDF A4',
+        'sec_opt1':      'Option 1 â€“ Load from generated CSV',
         'lbl_csv_file':  'CSV file:',
         'btn_load':      'Load',
-        'sec_opt2':      'Option 2 – Enter data manually',
+        'sec_opt2':      'Option 2 â€“ Enter data manually',
         'lbl_name_pfx':  'Name prefix:',
         'lbl_deveui_m':  'Initial DevEUI (16 hex):',
         'sec_serial':    'Serial number',
         'lbl_ser_start': 'Serial start:',
         'lbl_year':      'Year:',
-        'lbl_ser_fmt':   'Label format: 04906/2026  →  04907/2026  →  ...',
+        'lbl_ser_fmt':   'Label format: 04906/2026  â†’  04907/2026  â†’  ...',
         'sec_opts':      'Label options',
         'chk_bt':        'Include BLUETOOTH row  (TECNIDROBT + DevAddr)',
         'chk_rtu':       'RTU tube label  (TECNIDRO / HYDRONET-RTU header, no Bluetooth)',
-        'chk_lc':        'RTU LORACONT label  (23mm × 87mm, TECNIDRO / LORACONT-RTU header)',
+        'chk_lc':        'RTU LORACONT label  (23mm Ã— 87mm, TECNIDRO / LORACONT-RTU header)',
         'lbl_pdf_out':   'Output PDF file:',
         'btn_gen_pdf':   'Generate PDF Labels',
         'lang_title':    'Select language',
         'lang_sub':      'Interface language:',
         'theme_label':   'Application theme:',
-        'theme_dark':    '🌙  Dark',
-        'theme_light':   '☀  Light',
+        'theme_dark':    'ðŸŒ™  Dark',
+        'theme_light':   'â˜€  Light',
         'upd_title':     'Updates',
         'upd_version':   'Current version:',
         'upd_source':    'Manifest URL:',
@@ -759,22 +817,24 @@ TRANSLATIONS = {
         'serial_error_missing': 'File not found:\n{filename}',
         'serial_save_title': 'Save Hyperterminal as...',
         'serial_repo_title': 'GitHub serial registry',
-        'serial_repo_desc': 'Sync the last used serial across office PCs using the GitHub repository.',
-        'serial_repo_path': 'Local repo folder:',
+        'serial_repo_desc': 'Sync the last used serial across office PCs directly over the internet using GitHub.',
+        'serial_repo_path': 'Registry RAW URL:',
         'serial_repo_branch': 'Branch:',
-        'serial_repo_file': 'Registry file:',
+        'serial_repo_file': 'GitHub API URL:',
+        'serial_repo_token': 'GitHub token:',
         'serial_repo_station': 'PC / user name:',
         'serial_repo_save': 'Save settings',
         'serial_repo_sync': 'Sync from GitHub',
         'serial_repo_publish': 'Save counters to GitHub',
-        'serial_repo_ready': 'Configure the repository path and sync the serial registry.',
+        'serial_repo_ready': 'Configure the GitHub URLs, token, and sync the serial registry.',
         'serial_repo_saved': 'Serial settings saved.',
         'serial_repo_synced': 'Serial registry synced from GitHub.',
         'serial_repo_published': 'Serial counters updated on GitHub.',
         'serial_repo_status_format': '{family}: last {serial}  |  batch {batch}  |  {who}',
         'serial_repo_status_empty': 'No data',
-        'serial_repo_error_missing_path': 'Enter the local GitHub repository folder.',
-        'serial_repo_error_missing_repo': 'The repository folder does not exist:\n{path}',
+        'serial_repo_error_missing_path': 'Enter the GitHub RAW URL for the serial registry.',
+        'serial_repo_error_missing_repo': 'The GitHub repository configuration is not valid:\n{path}',
+        'serial_repo_error_missing_token': 'The GitHub token is missing. Configure it in the Serial tab to save new serials.',
         'serial_repo_error_overlap': '{family} already reaches {current}. Requested serial {requested} would duplicate codes.',
         'serial_next_button': 'Use next GitHub serial',
         'serial_next_status': '{family}: next suggested serial {value}',
@@ -785,13 +845,13 @@ TRANSLATIONS = {
         'serial_family_tic12': 'TIC12',
     },
     'it': {
-        'csv_title':     'Generatore CSV — Dispositivi LoRa',
+        'csv_title':     'Generatore CSV â€” Dispositivi LoRa',
         'sec_name':      'Nome del dispositivo',
         'lbl_prefix':    'Prefisso:',
         'lbl_from':      'Da:',
         'lbl_to':        'A:',
-        'prev_error':    "['a' deve essere ≥ 'da']",
-        'prev_fmt':      '→ {n} dispositivi:  {a}  …  {b}',
+        'prev_error':    "['a' deve essere â‰¥ 'da']",
+        'prev_fmt':      'â†’ {n} dispositivi:  {a}  â€¦  {b}',
         'sec_lora':      'Configurazione rete LoRa',
         'lbl_model':     'Modello (Model):',
         'lbl_deveui':    'DevEUI iniziale (16 hex):',
@@ -807,49 +867,49 @@ TRANSLATIONS = {
         'lbl_out_file':  'File di output:',
         'btn_gen_csv':   'Genera CSV',
         'lbl_ready':     'Pronto.',
-        'labels_title':  'Generatore Etichette — PDF A4',
-        'sec_opt1':      'Opzione 1 – Carica da CSV generato',
+        'labels_title':  'Generatore Etichette â€” PDF A4',
+        'sec_opt1':      'Opzione 1 â€“ Carica da CSV generato',
         'lbl_csv_file':  'File CSV:',
         'btn_load':      'Carica',
-        'sec_opt2':      'Opzione 2 – Inserisci dati manualmente',
+        'sec_opt2':      'Opzione 2 â€“ Inserisci dati manualmente',
         'lbl_name_pfx':  'Prefisso nome:',
         'lbl_deveui_m':  'DevEUI iniziale (16 hex):',
         'sec_serial':    'Numero seriale',
         'lbl_ser_start': 'Seriale inizio:',
         'lbl_year':      'Anno:',
-        'lbl_ser_fmt':   'Formato etichetta: 04906/2026  →  04907/2026  →  ...',
+        'lbl_ser_fmt':   'Formato etichetta: 04906/2026  â†’  04907/2026  â†’  ...',
         'sec_opts':      'Opzioni etichetta',
         'chk_bt':        'Includi riga BLUETOOTH  (TECNIDROBT + DevAddr)',
         'chk_rtu':       'Etichetta RTU in tubo  (header TECNIDRO / HYDRONET-RTU, senza Bluetooth)',
-        'chk_lc':        'Etichetta RTU LORACONT  (23mm × 87mm, header TECNIDRO / LORACONT-RTU)',
+        'chk_lc':        'Etichetta RTU LORACONT  (23mm Ã— 87mm, header TECNIDRO / LORACONT-RTU)',
         'lbl_pdf_out':   'File PDF di output:',
         'btn_gen_pdf':   'Genera PDF Etichette',
         'lang_title':    'Seleziona lingua',
         'lang_sub':      'Lingua interfaccia:',
         'theme_label':   'Tema applicazione:',
-        'theme_dark':    '🌙  Scuro',
-        'theme_light':   '☀  Chiaro',
+        'theme_dark':    'ðŸŒ™  Scuro',
+        'theme_light':   'â˜€  Chiaro',
         'upd_title':     'Aggiornamenti',
         'upd_version':   'Versione attuale:',
         'upd_source':    'URL del manifest:',
-        'upd_auto':      'Controlla aggiornamenti all’avvio',
+        'upd_auto':      'Controlla aggiornamenti allâ€™avvio',
         'upd_save':      'Salva configurazione',
         'upd_check':     'Controlla aggiornamenti',
         'upd_saved':     'Configurazione aggiornamenti salvata.',
         'upd_status_idle':'Configura un URL del manifest per attivare gli aggiornamenti online.',
         'upd_status_checking':'Controllo aggiornamenti...',
-        'upd_status_latest':'Hai già l’ultima versione.',
+        'upd_status_latest':'Hai giÃ  lâ€™ultima versione.',
         'upd_status_available':'Nuova versione disponibile: {version}',
         'upd_status_disabled':'Gli aggiornamenti online sono disattivati.',
         'upd_error_title':'Aggiornamento',
-        'upd_error_no_url':'Inserisci l’URL del manifest di aggiornamento.',
-        'upd_error_bad_manifest':'Il manifest non è valido o mancano dei dati.',
+        'upd_error_no_url':'Inserisci lâ€™URL del manifest di aggiornamento.',
+        'upd_error_bad_manifest':'Il manifest non Ã¨ valido o mancano dei dati.',
         'upd_error_network':'Impossibile controllare gli aggiornamenti.\n{error}',
-        'upd_error_download':'Impossibile scaricare l’aggiornamento.\n{error}',
+        'upd_error_download':'Impossibile scaricare lâ€™aggiornamento.\n{error}',
         'upd_confirm_title':'Nuova versione disponibile',
         'upd_confirm_body':'Versione attuale: {current}\nNuova versione: {latest}\n\nVuoi scaricarla e installarla adesso?',
         'upd_download_title':'Salva aggiornamento come...',
-        'upd_success_restart':'L’aggiornamento è stato scaricato. Il programma verrà chiuso per installare la nuova versione.',
+        'upd_success_restart':'Lâ€™aggiornamento Ã¨ stato scaricato. Il programma verrÃ  chiuso per installare la nuova versione.',
         'json_title':    'Generatore file JSON',
         'sec_valve':     'Tipo di valvola',
         'sec_allarme':   'Allarme Sportello',
@@ -881,8 +941,8 @@ TRANSLATIONS = {
         'sec_proj_lbl': 'Tipo etichetta',
         'sec_proj_ser': 'Seriale (per PDF)',
         'sec_proj_jsn': 'Parametri JSON',
-        'btn_gen_all':  '⚡  GENERA TUTTO  —  CSV + JSON + Etichette',
-        'proj_struct':  'Verrà creata la struttura:',
+        'btn_gen_all':  'âš¡  GENERA TUTTO  â€”  CSV + JSON + Etichette',
+        'proj_struct':  'VerrÃ  creata la struttura:',
         'gw_title': 'Gateway',
         'gw_desc': 'Genera etichette GW in formato A4 seguendo il modello Excel. Ogni pagina contiene fino a 5 gateway e ogni gateway richiede i suoi dati manuali.',
         'gw_section_list': 'Gateway',
@@ -960,22 +1020,24 @@ TRANSLATIONS = {
         'serial_error_missing': 'File non trovato:\n{filename}',
         'serial_save_title': 'Salva Hyperterminal come...',
         'serial_repo_title': 'Registro serial GitHub',
-        'serial_repo_desc': 'Sincronizza l ultimo seriale usato tra i PC dell ufficio usando il repository GitHub.',
-        'serial_repo_path': 'Cartella locale repo:',
+        'serial_repo_desc': 'Sincronizza l ultimo seriale usato tra i PC dell ufficio direttamente via internet usando GitHub.',
+        'serial_repo_path': 'URL RAW registro:',
         'serial_repo_branch': 'Branch:',
-        'serial_repo_file': 'File registro:',
+        'serial_repo_file': 'URL API GitHub:',
+        'serial_repo_token': 'GitHub token:',
         'serial_repo_station': 'Nome PC / utente:',
         'serial_repo_save': 'Salva configurazione',
         'serial_repo_sync': 'Sincronizza da GitHub',
         'serial_repo_publish': 'Salva contatori su GitHub',
-        'serial_repo_ready': 'Configura il percorso del repository e sincronizza il registro seriale.',
+        'serial_repo_ready': 'Configura le URL di GitHub, il token e sincronizza il registro seriale.',
         'serial_repo_saved': 'Configurazione seriale salvata.',
         'serial_repo_synced': 'Registro seriale sincronizzato da GitHub.',
         'serial_repo_published': 'Contatori seriali aggiornati su GitHub.',
         'serial_repo_status_format': '{family}: ultimo {serial}  |  lotto {batch}  |  {who}',
         'serial_repo_status_empty': 'Nessun dato',
-        'serial_repo_error_missing_path': 'Inserisci la cartella locale del repository GitHub.',
-        'serial_repo_error_missing_repo': 'La cartella del repository non esiste:\n{path}',
+        'serial_repo_error_missing_path': 'Inserisci la URL RAW del registro seriale su GitHub.',
+        'serial_repo_error_missing_repo': 'La configurazione del repository GitHub non e valida:\n{path}',
+        'serial_repo_error_missing_token': 'Manca il GitHub token. Configuralo nella scheda Serial per salvare i nuovi seriali.',
         'serial_repo_error_overlap': '{family} arriva gia a {current}. Il seriale richiesto ({requested}) duplichera dei codici.',
         'serial_next_button': 'Usa il prossimo seriale GitHub',
         'serial_next_status': '{family}: prossimo seriale suggerito {value}',
@@ -1087,7 +1149,7 @@ def check_for_updates(parent, interactive=True, status_cb=None):
         messagebox.showerror(t("upd_error_title"), t("upd_error_download").format(error=exc), parent=parent)
         return False
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 FIXED_APP_EUI = "665544332211AABB"
 FIXED_AUTH    = "ABP"
 FIXED_CLASS   = "A"
@@ -1101,9 +1163,9 @@ def _resource_path(rel):
     return os.path.join(base, rel)
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# PDF – sin cambios
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# PDF â€“ sin cambios
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _make_qr_image(data):
     import qrcode
     from io import BytesIO
@@ -1125,7 +1187,7 @@ def _make_pdf(devices, output_path, include_bluetooth=True, rtu_header=False, lo
         from reportlab.pdfgen import canvas as rl_canvas
         from reportlab.lib.units import mm
     except ImportError:
-        raise ImportError("La librería 'reportlab' no está instalada.\nEjecuta:  pip install reportlab")
+        raise ImportError("La librerÃ­a 'reportlab' no estÃ¡ instalada.\nEjecuta:  pip install reportlab")
 
     PW, PH = A4
     ML = 6*mm; MR = 6*mm; MT = 4*mm; MB = 4*mm
@@ -1265,25 +1327,25 @@ def _make_pdf(devices, output_path, include_bluetooth=True, rtu_header=False, lo
     c.save()
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # GUI helpers
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 LBL_W = 200
 
 # Colores adaptativos  (light_mode, dark_mode)
 C_SEC_BG   = ("#cce0f5", "#162d4a")   # azul claro     / navy oscuro
 C_SEC_TEXT = ("#0d3060", "#82bcff")   # azul oscuro     / azul claro
-C_HINT     = ("#5577aa", "#8899aa")   # azul grisáceo   / gris-azul
+C_HINT     = ("#5577aa", "#8899aa")   # azul grisÃ¡ceo   / gris-azul
 C_STATUS   = ("#1a5a8a", "#6699bb")   # azul medio      / azul claro
-C_HDR_BG   = ("#1a3a6a", "#0e1c30")  # navy (igual en ambos temas — barra top profesional)
+C_HDR_BG   = ("#1a3a6a", "#0e1c30")  # navy (igual en ambos temas â€” barra top profesional)
 C_HDR_TEXT = ("white",   "#82bcff")  # blanco / azul claro
 C_BAR_BG   = ("#1a3a6a", "#090f1a")  # navy (igual en ambos)
-C_BAR_TEXT = ("#aaccee", "#556677")  # azul pálido / gris
+C_BAR_TEXT = ("#aaccee", "#556677")  # azul pÃ¡lido / gris
 C_DIV      = ("#90b8d8", "#2a3a4a")  # azul gris claro / oscuro
 
 
 def _sec(parent, key, refs=None):
-    """Barra de sección."""
+    """Barra de secciÃ³n."""
     f = ctk.CTkFrame(parent, fg_color=C_SEC_BG, corner_radius=6, height=30)
     f.pack(fill="x", padx=6, pady=(14, 4))
     f.pack_propagate(False)
@@ -1306,9 +1368,9 @@ def _row(parent, pady=3):
     return f
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Tab 1: CSV
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class CSVTab(ctk.CTkScrollableFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color=("white", "#1e1e2e"),
@@ -1323,13 +1385,13 @@ class CSVTab(ctk.CTkScrollableFrame):
         lbl_title.pack(pady=(12, 6))
         self._refs['csv_title'] = lbl_title
 
-        # ── Nombre ────────────────────────────────────────────────
+        # â”€â”€ Nombre â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_name', self._refs)
         self._frow('lbl_prefix', "CBG_",  "name_prefix",  w=130)
         self._frow('lbl_from',   "1201",  "start_number", w=100)
         self._frow('lbl_to',     "1220",  "end_number",   w=100)
 
-        # Preview (sin textvariable — se actualiza con trace)
+        # Preview (sin textvariable â€” se actualiza con trace)
         self._preview_lbl = ctk.CTkLabel(self, text="",
                                           text_color=C_HINT,
                                           font=ctk.CTkFont(size=10))
@@ -1338,7 +1400,7 @@ class CSVTab(ctk.CTkScrollableFrame):
             v.trace_add("write", self._update_preview)
         self._update_preview()
 
-        # ── LoRa ─────────────────────────────────────────────────
+        # â”€â”€ LoRa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_lora', self._refs)
         self._frow('lbl_model',   "210",                              "model")
         self._frow('lbl_deveui',  "512345678B1904B1",                 "start_dev_eui")
@@ -1350,7 +1412,7 @@ class CSVTab(ctk.CTkScrollableFrame):
         self._frow('lbl_newskey', "0123456789ABCDEF0123456789ABCDEF", "new_skey")
         self._frow('lbl_appskey', "0123456789ABCDEF0123456789ABCDEF", "app_skey")
 
-        # ── Coordenadas ───────────────────────────────────────────
+        # â”€â”€ Coordenadas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_coords', self._refs)
         r = _row(self)
         lbl_lat = ctk.CTkLabel(r, text=t('lbl_lat'), width=LBL_W, anchor="w")
@@ -1364,7 +1426,7 @@ class CSVTab(ctk.CTkScrollableFrame):
         self.longitude_var = tk.StringVar()
         ctk.CTkEntry(r, textvariable=self.longitude_var, width=150).pack(side="left", padx=4)
 
-        # ── Extra ─────────────────────────────────────────────────
+        # â”€â”€ Extra â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_extra', self._refs)
         re = _row(self)
         ctk.CTkLabel(re, text="childnumber:", width=LBL_W, anchor="w").pack(side="left")
@@ -1376,7 +1438,7 @@ class CSVTab(ctk.CTkScrollableFrame):
         self._frow('lbl_tag',   "", "tag")
         self._frow('lbl_alias', "", "alias")
 
-        # ── Output ────────────────────────────────────────────────
+        # â”€â”€ Output â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _div(self)
         ro = _row(self)
         lbl_out = ctk.CTkLabel(ro, text=t('lbl_out_file'), width=LBL_W, anchor="w")
@@ -1385,14 +1447,14 @@ class CSVTab(ctk.CTkScrollableFrame):
         self.csv_output_var = tk.StringVar()
         ctk.CTkEntry(ro, textvariable=self.csv_output_var).pack(
             side="left", fill="x", expand=True, padx=(4, 4))
-        ctk.CTkButton(ro, text="…", width=36, command=self._browse_csv).pack(side="left")
+        ctk.CTkButton(ro, text="â€¦", width=36, command=self._browse_csv).pack(side="left")
 
         btn = ctk.CTkButton(self, text=t('btn_gen_csv'), command=self._generate,
                              height=44, font=ctk.CTkFont(size=13, weight="bold"))
         btn.pack(pady=(16, 16), padx=30, fill="x")
         self._refs['btn_gen_csv'] = btn
 
-    # ── helpers ──────────────────────────────────────────────────────────────
+    # â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _frow(self, key, default, attr, w=None):
         r = _row(self)
         lbl = ctk.CTkLabel(r, text=t(key), width=LBL_W, anchor="w")
@@ -1452,7 +1514,7 @@ class CSVTab(ctk.CTkScrollableFrame):
 
             if not output_file: messagebox.showerror("Error","Selecciona un archivo de salida."); return
             num_devices = end-start+1
-            if num_devices <= 0: messagebox.showerror("Error","'Hasta' debe ser ≥ 'Desde'."); return
+            if num_devices <= 0: messagebox.showerror("Error","'Hasta' debe ser â‰¥ 'Desde'."); return
             if len(start_deveui) != 16: messagebox.showerror("Error",f"DevEUI debe tener 16 hex (tiene {len(start_deveui)})."); return
             int(start_deveui, 16)
             if len(new_skey) != 32: messagebox.showerror("Error",f"NewSKey debe tener 32 hex."); return
@@ -1472,23 +1534,23 @@ class CSVTab(ctk.CTkScrollableFrame):
                               "",alias,FIXED_GROUP,"","",childnumber,devstatusreq])
             with open(output_file,"w",newline="",encoding="utf-8") as f:
                 w = csv.writer(f, delimiter=";"); w.writerow(header); w.writerows(rows)
-            messagebox.showinfo("Éxito",
+            messagebox.showinfo("Ã‰xito",
                 f"CSV generado correctamente.\n\n"
                 f"  Dispositivos: {num_devices}\n"
                 f"  DevEUI desde: {start_deveui}\n"
                 f"  DevEUI hasta: {format(deveui_int+num_devices-1,'016X')}\n\n"
                 f"Archivo:\n{output_file}")
         except ValueError as e:
-            messagebox.showerror("Error de valor", f"Verifica campos numéricos/hex.\n\nDetalle: {e}")
+            messagebox.showerror("Error de valor", f"Verifica campos numÃ©ricos/hex.\n\nDetalle: {e}")
         except PermissionError:
             messagebox.showerror("Error de permisos","No se pudo escribir el archivo.")
         except Exception as e:
             messagebox.showerror("Error inesperado", str(e))
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Tab 2: Etichette PDF
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class EtichetteTab(ctk.CTkScrollableFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color=("white", "#1e1e2e"),
@@ -1504,7 +1566,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
         lbl_title.pack(pady=(12, 6))
         self._refs['labels_title'] = lbl_title
 
-        # ── Opción 1 ─────────────────────────────────────────────
+        # â”€â”€ OpciÃ³n 1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_opt1', self._refs)
         r1 = _row(self)
         lbl_cf = ctk.CTkLabel(r1, text=t('lbl_csv_file'), width=LBL_W, anchor="w")
@@ -1513,7 +1575,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
         self.csv_input_var = tk.StringVar()
         ctk.CTkEntry(r1, textvariable=self.csv_input_var).pack(
             side="left", fill="x", expand=True, padx=(4, 4))
-        ctk.CTkButton(r1, text="…", width=36, command=self._browse_csv_in).pack(side="left", padx=(0,4))
+        ctk.CTkButton(r1, text="â€¦", width=36, command=self._browse_csv_in).pack(side="left", padx=(0,4))
         btn_load = ctk.CTkButton(r1, text=t('btn_load'), width=80, command=self._load_csv)
         btn_load.pack(side="left")
         self._refs['btn_load'] = btn_load
@@ -1524,14 +1586,14 @@ class EtichetteTab(ctk.CTkScrollableFrame):
                                              font=ctk.CTkFont(size=10))
         self._csv_status_lbl.pack(anchor="w", padx=18, pady=(2, 4))
 
-        # ── Opción 2 ─────────────────────────────────────────────
+        # â”€â”€ OpciÃ³n 2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_opt2', self._refs)
         self._frow('lbl_name_pfx', "CBG_",            "m_prefix", w=130)
         self._frow('lbl_from',     "1201",             "m_from",   w=100)
         self._frow('lbl_to',       "1220",             "m_to",     w=100)
         self._frow('lbl_deveui_m', "512345678B1904B1", "m_deveui")
 
-        # ── Serial ───────────────────────────────────────────────
+        # â”€â”€ Serial â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_serial', self._refs)
         rs = _row(self)
         lbl_ss = ctk.CTkLabel(rs, text=t('lbl_ser_start'), width=LBL_W, anchor="w")
@@ -1560,10 +1622,10 @@ class EtichetteTab(ctk.CTkScrollableFrame):
         )
         self._github_btn.pack(anchor="w", padx=18, pady=(0, 8))
 
-        # ── Opciones ─────────────────────────────────────────────
+        # â”€â”€ Opciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_opts', self._refs)
 
-        # Una sola variable — 4 opciones mutuamente exclusivas
+        # Una sola variable â€” 4 opciones mutuamente exclusivas
         self.label_type_var = tk.StringVar(value="nortu")
 
         OPTS = [
@@ -1581,7 +1643,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
                 font=ctk.CTkFont(size=13),
             ).pack(anchor="w", padx=28, pady=6)
 
-        # ── Output ────────────────────────────────────────────────
+        # â”€â”€ Output â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _div(self)
         rpo = _row(self)
         lbl_po = ctk.CTkLabel(rpo, text=t('lbl_pdf_out'), width=LBL_W, anchor="w")
@@ -1590,7 +1652,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
         self.pdf_output_var = tk.StringVar()
         ctk.CTkEntry(rpo, textvariable=self.pdf_output_var).pack(
             side="left", fill="x", expand=True, padx=(4, 4))
-        ctk.CTkButton(rpo, text="…", width=36, command=self._browse_pdf).pack(side="left")
+        ctk.CTkButton(rpo, text="â€¦", width=36, command=self._browse_pdf).pack(side="left")
 
         btn_pdf = ctk.CTkButton(self, text=t('btn_gen_pdf'), command=self._generate_pdf,
                                  height=44, font=ctk.CTkFont(size=13, weight="bold"))
@@ -1603,7 +1665,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
                                              font=ctk.CTkFont(size=10))
         self._pdf_status_lbl.pack(anchor="w", padx=18, pady=(0, 14))
 
-    # ── helpers ──────────────────────────────────────────────────────────────
+    # â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _frow(self, key, default, attr, w=None):
         r = _row(self)
         lbl = ctk.CTkLabel(r, text=t(key), width=LBL_W, anchor="w")
@@ -1638,7 +1700,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
     def _load_csv(self):
         path = self.csv_input_var.get().strip()
         if not path or not os.path.isfile(path):
-            messagebox.showerror("Error","Selecciona un archivo CSV válido."); return
+            messagebox.showerror("Error","Selecciona un archivo CSV vÃ¡lido."); return
         try:
             devices = []
             with open(path,"r",encoding="utf-8") as f:
@@ -1651,7 +1713,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
                                     'dev_eui': d.get('DevEUI','').strip(),
                                     'dev_addr': d.get('DevAddr','').strip()})
             self._devices = devices
-            self._csv_status_lbl.configure(text=f"  ✓  {len(devices)} dispositivos cargados desde CSV.")
+            self._csv_status_lbl.configure(text=f"  âœ“  {len(devices)} dispositivos cargados desde CSV.")
             if devices:
                 fn = devices[0]['name']; ln = devices[-1]['name']
                 np = ''.join(c for c in fn if c.isdigit())
@@ -1671,7 +1733,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
         ds = self.m_deveui_var.get().strip().upper()
         if len(ds) != 16: raise ValueError(f"DevEUI debe tener 16 hex (tiene {len(ds)}).")
         int(ds, 16); di = int(ds,16); n = end-start+1
-        if n <= 0: raise ValueError("'Hasta' debe ser ≥ 'Desde'.")
+        if n <= 0: raise ValueError("'Hasta' debe ser â‰¥ 'Desde'.")
         devs = []
         for i in range(n):
             nm = f"{prefix}{start+i:0{nw}d}"; de = format(di+i,"016X"); da = de[-8:]
@@ -1710,7 +1772,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
             sw = len(ssr); ss = int(ssr)
 
             settings = _load_serial_settings()
-            self._pdf_status_lbl.configure(text="⏳  Sincronizando registro GitHub…")
+            self._pdf_status_lbl.configure(text="â³  Sincronizando registro GitHubâ€¦")
             self.update()
             _serial_registry_update_last(settings, "RTU", ss, ss + len(bd) - 1, sy, len(bd))
 
@@ -1724,7 +1786,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
             rtu_header        = (opt == "tubo")
             loraconta         = (opt == "loracont")
 
-            self._pdf_status_lbl.configure(text="Generando PDF…")
+            self._pdf_status_lbl.configure(text="Generando PDFâ€¦")
             self.update()
             _make_pdf(devices, of,
                       include_bluetooth=include_bluetooth,
@@ -1737,25 +1799,25 @@ class EtichetteTab(ctk.CTkScrollableFrame):
                 end=devices[-1]['serial'].split('/')[0],
                 year=sy,
             ))
-            messagebox.showinfo("Éxito",
+            messagebox.showinfo("Ã‰xito",
                 f"PDF generado correctamente.\n\n"
                 f"  Etiquetas:  {n}\n"
                 f"  Primera:    {devices[0]['name']}  |  {devices[0]['serial']}\n"
-                f"  Última:     {devices[-1]['name']}  |  {devices[-1]['serial']}\n\n"
+                f"  Ãšltima:     {devices[-1]['name']}  |  {devices[-1]['serial']}\n\n"
                 f"Archivo:\n{of}")
         except ValueError as e:
             messagebox.showerror("Error de valor", str(e))
         except ImportError as e:
-            messagebox.showerror("Librería faltante", str(e))
+            messagebox.showerror("LibrerÃ­a faltante", str(e))
         except PermissionError:
             messagebox.showerror("Error de permisos","No se pudo escribir el PDF.")
         except Exception as e:
             messagebox.showerror("Error inesperado", str(e))
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Tab 3: Idioma + Tema
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class LangTab(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color=("white", "#1e1e2e"))
@@ -1780,12 +1842,12 @@ class LangTab(ctk.CTkFrame):
         # Selector de idioma
         self._lang_seg = ctk.CTkSegmentedButton(
             self,
-            values=["🇪🇸  Español", "🇬🇧  English", "🇮🇹  Italiano"],
+            values=["ðŸ‡ªðŸ‡¸  EspaÃ±ol", "ðŸ‡¬ðŸ‡§  English", "ðŸ‡®ðŸ‡¹  Italiano"],
             command=self._on_lang,
             font=ctk.CTkFont(size=13),
             height=44, width=420,
         )
-        self._lang_seg.set("🇪🇸  Español")
+        self._lang_seg.set("ðŸ‡ªðŸ‡¸  EspaÃ±ol")
         self._lang_seg.pack(pady=(0, 40))
 
         # Divisor
@@ -1845,10 +1907,10 @@ class LangTab(ctk.CTkFrame):
         self._lbl_upd_status.pack(pady=(4, 0))
 
     def _on_lang(self, value):
-        code_map = {"🇪🇸  Español": "es", "🇬🇧  English": "en", "🇮🇹  Italiano": "it"}
+        code_map = {"ðŸ‡ªðŸ‡¸  EspaÃ±ol": "es", "ðŸ‡¬ðŸ‡§  English": "en", "ðŸ‡®ðŸ‡¹  Italiano": "it"}
         set_lang(code_map.get(value, "es"))
         # Actualizar el theme segmented button con los textos del nuevo idioma,
-        # preservando la selección actual
+        # preservando la selecciÃ³n actual
         cur = "dark" if self._is_dark else "light"
         new_vals = [t('theme_dark'), t('theme_light')]
         self._theme_seg.configure(values=new_vals)
@@ -1887,13 +1949,13 @@ class LangTab(ctk.CTkFrame):
         self._lbl_upd_status.configure(text=t('upd_status_idle'))
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Template JSON
 # Todos los valores son fijos excepto: allarmi, valvetype, deui, daddr
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 _JSON_BASE = {
     "device": {
-        "allarmi":          None,   # 1=ON / 0=OFF  → desde UI
+        "allarmi":          None,   # 1=ON / 0=OFF  â†’ desde UI
         "adc":              0,
         "minvddbat":        3000,
         "alarmbat":         3200,
@@ -1903,7 +1965,7 @@ _JSON_BASE = {
         "valvestatuscycle": 120000,
         "payloadcycle":     0,
         "cfm_msg_cycle":    0,
-        "valvetype":        None,   # 1=Motorizzata / 0=ELBA  → desde UI
+        "valvetype":        None,   # 1=Motorizzata / 0=ELBA  â†’ desde UI
         "pulseduration":    80,
         "motorduration":    12000,
         "adcdelay":         500,
@@ -1934,8 +1996,8 @@ _JSON_BASE = {
 
 def _build_json(dev_eui, dev_addr, valve_type, allarme_on, sendinterval=130000, adc_on=False):
     """Construye el dict JSON para un dispositivo.
-    valve_type: 'motorizzata' → valvetype=1  |  'elba' → valvetype=0
-    adc_on: True → adc=1  |  False → adc=0
+    valve_type: 'motorizzata' â†’ valvetype=1  |  'elba' â†’ valvetype=0
+    adc_on: True â†’ adc=1  |  False â†’ adc=0
     """
     data = copy.deepcopy(_JSON_BASE)
     data["device"]["allarmi"]      = 1 if allarme_on else 0
@@ -1948,14 +2010,14 @@ def _build_json(dev_eui, dev_addr, valve_type, allarme_on, sendinterval=130000, 
     return data
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # PDF: Etichette TIC12 / I-TIC
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _make_tic_pdf(labels, output_path, product_name):
     """
     labels: list of dicts {'serial': '00001/2026', 'fw': '04.00.05'}
     product_name: 'TIC12' or 'I-TIC 1V'
-    Generates A4 portrait PDF: 3 labels/row × 15 rows = 45 labels/page.
+    Generates A4 portrait PDF: 3 labels/row Ã— 15 rows = 45 labels/page.
     Layout: logo on left | product/company/website on right | serial/FW bar bottom.
     """
     try:
@@ -1964,19 +2026,19 @@ def _make_tic_pdf(labels, output_path, product_name):
         from reportlab.lib.units import mm
         from reportlab.lib.utils import ImageReader
     except ImportError:
-        raise ImportError("La librería 'reportlab' no está instalada.\nEjecuta:  pip install reportlab")
+        raise ImportError("La librerÃ­a 'reportlab' no estÃ¡ instalada.\nEjecuta:  pip install reportlab")
 
     import io
 
-    PW, PH = A4          # 595.28 × 841.89 pt  (portrait)
+    PW, PH = A4          # 595.28 Ã— 841.89 pt  (portrait)
 
-    # ── Margins (from Excel page setup) ──────────────────────────
+    # â”€â”€ Margins (from Excel page setup) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ML = 18 * mm
     MR = 14 * mm
     MT =  9 * mm
     MB =  4 * mm
 
-    # ── Grid ─────────────────────────────────────────────────────
+    # â”€â”€ Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     N_COLS  = 3
     N_ROWS  = 15
     COL_GAP = 0.5 * mm
@@ -2016,7 +2078,7 @@ def _make_tic_pdf(labels, output_path, product_name):
     def _cy(row_bottom, row_h, fs):
         return row_bottom + (row_h - fs) * 0.5
 
-    # ── Prepare black version of logo for labels ─────────────────
+    # â”€â”€ Prepare black version of logo for labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     logo_reader = None
     logo_path   = _resource("logo.png")
     if os.path.isfile(logo_path):
@@ -2026,9 +2088,9 @@ def _make_tic_pdf(labels, output_path, product_name):
             bpx = []
             for r, g, b, a in px:
                 lum = 0.299*r + 0.587*g + 0.114*b
-                if lum > 210 or a < 30:          # white / transparent → keep transparent
+                if lum > 210 or a < 30:          # white / transparent â†’ keep transparent
                     bpx.append((255, 255, 255, 0))
-                else:                              # any colored pixel → black
+                else:                              # any colored pixel â†’ black
                     bpx.append((0, 0, 0, a))
             black_img = Image.new("RGBA", src.size)
             black_img.putdata(bpx)
@@ -2063,7 +2125,7 @@ def _make_tic_pdf(labels, output_path, product_name):
         serial  = lbl['serial']
         fw_text = f"FW: {lbl['fw']}"
 
-        # ── Borders ──────────────────────────────────────────────
+        # â”€â”€ Borders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         c.setStrokeColorRGB(0, 0, 0)
         c.setLineWidth(0.5)
 
@@ -2079,14 +2141,14 @@ def _make_tic_pdf(labels, output_path, product_name):
         # Vertical divider inside bottom bar: serial | FW
         c.line(lx + CA + CB, row4_bot, lx + CA + CB, row3_bot)
 
-        # ── Logo negro (left section, rows 1-3) ─────────────────────
+        # â”€â”€ Logo negro (left section, rows 1-3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if logo_reader:
             c.drawImage(logo_reader,
                         lx, row3_bot,
                         CA, (R1+R2+R3),
                         mask='auto', preserveAspectRatio=True, anchor='c')
 
-        # ── Text section center x ─────────────────────────────────
+        # â”€â”€ Text section center x â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         tx = lx + CA + TW / 2      # center of text area
 
         c.setFillColorRGB(0, 0, 0)
@@ -2104,25 +2166,25 @@ def _make_tic_pdf(labels, output_path, product_name):
         c.drawCentredString(tx, _cy(row3_bot, R3, FS_WEB),
                             "w w w . t e c n i d r o . c o m")
 
-        # ── Row 4 bottom bar ─────────────────────────────────────
-        # Cell A — "SERIAL N."
+        # â”€â”€ Row 4 bottom bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # Cell A â€” "SERIAL N."
         c.setFont("Helvetica", FS_SLBL)
         c.drawCentredString(lx + CA / 2, _cy(row4_bot, R4, FS_SLBL), "SERIAL N.")
 
-        # Cell B — serial number
+        # Cell B â€” serial number
         c.setFont("Helvetica-Bold", FS_SVAL)
         c.drawCentredString(lx + CA + CB / 2, _cy(row4_bot, R4, FS_SVAL), serial)
 
-        # Cell C — FW version
+        # Cell C â€” FW version
         c.setFont("Helvetica-Bold", FS_FW)
         c.drawCentredString(lx + CA + CB + CC / 2, _cy(row4_bot, R4, FS_FW), fw_text)
 
     c.save()
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Tab 4: Generador JSON
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class JSONTab(ctk.CTkScrollableFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color=("white", "#1e1e2e"),
@@ -2132,12 +2194,12 @@ class JSONTab(ctk.CTkScrollableFrame):
         _lang_cbs.append(self._refresh_lang)
 
     def _build(self):
-        # Título
+        # TÃ­tulo
         self._lbl_title = ctk.CTkLabel(self, text=t('json_title'),
                                         font=ctk.CTkFont(size=15, weight="bold"))
         self._lbl_title.pack(pady=(12, 6))
 
-        # ── Nombre del dispositivo ────────────────────────────────
+        # â”€â”€ Nombre del dispositivo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_name', self._refs)
         self._frow('lbl_prefix', "CBG_",  "j_prefix",  w=130)
         self._frow('lbl_from',   "0081",  "j_from",    w=100)
@@ -2151,7 +2213,7 @@ class JSONTab(ctk.CTkScrollableFrame):
             v.trace_add("write", self._update_preview)
         self._update_preview()
 
-        # ── Radio (DevEUI) ────────────────────────────────────────
+        # â”€â”€ Radio (DevEUI) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_deveui_j', self._refs)
         self._frow('lbl_deveui_j', "512345678B190051", "j_deveui")
         hint = ctk.CTkLabel(self, text=t('lbl_devaddr_j'),
@@ -2160,7 +2222,7 @@ class JSONTab(ctk.CTkScrollableFrame):
         hint.pack(anchor="w", padx=18, pady=(0, 4))
         self._refs['lbl_devaddr_j'] = hint
 
-        # ── Tipo de válvula ───────────────────────────────────────
+        # â”€â”€ Tipo de vÃ¡lvula â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_valve', self._refs)
         self.valve_var = tk.StringVar(value="motorizzata")
         for val, label in [("motorizzata", "Valvola Motorizzata"), ("elba", "ELBA")]:
@@ -2169,7 +2231,7 @@ class JSONTab(ctk.CTkScrollableFrame):
                                font=ctk.CTkFont(size=13)
                                ).pack(anchor="w", padx=28, pady=6)
 
-        # ── Allarme Sportello ─────────────────────────────────────
+        # â”€â”€ Allarme Sportello â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_allarme', self._refs)
         self.allarme_var = tk.StringVar(value="on")
         for val, label in [("on", "ON"), ("off", "OFF")]:
@@ -2178,7 +2240,7 @@ class JSONTab(ctk.CTkScrollableFrame):
                                font=ctk.CTkFont(size=13)
                                ).pack(anchor="w", padx=28, pady=6)
 
-        # ── ADC ───────────────────────────────────────────────────
+        # â”€â”€ ADC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_adc', self._refs)
         self.adc_var = tk.StringVar(value="off")
         for val, label in [("on", "ON"), ("off", "OFF")]:
@@ -2187,11 +2249,11 @@ class JSONTab(ctk.CTkScrollableFrame):
                                font=ctk.CTkFont(size=13)
                                ).pack(anchor="w", padx=28, pady=6)
 
-        # ── Parámetros de envío ───────────────────────────────────
+        # â”€â”€ ParÃ¡metros de envÃ­o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_send_params', self._refs)
         self._frow('lbl_sendinterval', "130000", "j_sendinterval", w=140)
 
-        # ── Carpeta de salida ─────────────────────────────────────
+        # â”€â”€ Carpeta de salida â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_out_json', self._refs)
         r_out = _row(self)
         lbl_fld = ctk.CTkLabel(r_out, text=t('lbl_out_folder'), width=LBL_W, anchor="w")
@@ -2200,10 +2262,10 @@ class JSONTab(ctk.CTkScrollableFrame):
         self.out_folder_var = tk.StringVar()
         ctk.CTkEntry(r_out, textvariable=self.out_folder_var).pack(
             side="left", fill="x", expand=True, padx=(4, 4))
-        ctk.CTkButton(r_out, text="…", width=36,
+        ctk.CTkButton(r_out, text="â€¦", width=36,
                        command=self._browse_folder).pack(side="left")
 
-        # ── Botón generar ─────────────────────────────────────────
+        # â”€â”€ BotÃ³n generar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _div(self)
         btn = ctk.CTkButton(self, text=t('btn_gen_json'),
                              command=self._generate,
@@ -2216,7 +2278,7 @@ class JSONTab(ctk.CTkScrollableFrame):
                                          font=ctk.CTkFont(size=10))
         self._status_lbl.pack(anchor="w", padx=18, pady=(0, 14))
 
-    # ── helpers ──────────────────────────────────────────────────────────────
+    # â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _frow(self, key, default, attr, w=None):
         r = _row(self)
         lbl = ctk.CTkLabel(r, text=t(key), width=LBL_W, anchor="w")
@@ -2276,7 +2338,7 @@ class JSONTab(ctk.CTkScrollableFrame):
             if not os.path.isdir(folder):
                 messagebox.showerror("Error", "La carpeta no existe."); return
             if end < start:
-                messagebox.showerror("Error", "'Hasta' debe ser ≥ 'Desde'."); return
+                messagebox.showerror("Error", "'Hasta' debe ser â‰¥ 'Desde'."); return
             if len(deveui_s) != 16:
                 messagebox.showerror("Error", f"DevEUI debe tener 16 hex (tiene {len(deveui_s)})."); return
             int(deveui_s, 16)
@@ -2284,7 +2346,7 @@ class JSONTab(ctk.CTkScrollableFrame):
             deveui_int  = int(deveui_s, 16)
             num_devices = end - start + 1
 
-            self._status_lbl.configure(text="Generando JSON…")
+            self._status_lbl.configure(text="Generando JSONâ€¦")
             self.update()
 
             for i in range(num_devices):
@@ -2297,27 +2359,27 @@ class JSONTab(ctk.CTkScrollableFrame):
                     json.dump(data, f, indent=4)
 
             self._status_lbl.configure(
-                text=f"✓  {num_devices} archivos JSON generados  →  {folder}")
-            messagebox.showinfo("Éxito",
+                text=f"âœ“  {num_devices} archivos JSON generados  â†’  {folder}")
+            messagebox.showinfo("Ã‰xito",
                 f"JSON generados correctamente.\n\n"
                 f"  Dispositivos:   {num_devices}\n"
-                f"  Válvula:        {'Valvola Motorizzata' if valve=='motorizzata' else 'ELBA'}\n"
+                f"  VÃ¡lvula:        {'Valvola Motorizzata' if valve=='motorizzata' else 'ELBA'}\n"
                 f"  Allarme Sport.: {'ON' if allarme else 'OFF'}\n"
                 f"  DevEUI desde:   {deveui_s}\n"
                 f"  DevEUI hasta:   {format(deveui_int+num_devices-1,'016X')}\n\n"
                 f"Carpeta:\n{folder}")
 
         except ValueError as e:
-            messagebox.showerror("Error de valor", f"Verifica campos numéricos/hex.\n\nDetalle: {e}")
+            messagebox.showerror("Error de valor", f"Verifica campos numÃ©ricos/hex.\n\nDetalle: {e}")
         except PermissionError:
             messagebox.showerror("Error de permisos", "No se pudo escribir en la carpeta.")
         except Exception as e:
             messagebox.showerror("Error inesperado", str(e))
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Tab 5: Proyecto Completo
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class ProjectTab(ctk.CTkScrollableFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color=("white", "#1e1e2e"),
@@ -2327,19 +2389,19 @@ class ProjectTab(ctk.CTkScrollableFrame):
         _lang_cbs.append(self._refresh_lang)
 
     def _build(self):
-        # Título
+        # TÃ­tulo
         self._lbl_title = ctk.CTkLabel(self, text=t('proj_title'),
                                         font=ctk.CTkFont(size=15, weight="bold"))
         self._lbl_title.pack(pady=(12, 4))
 
-        # Preview estructura (se actualiza dinámicamente)
+        # Preview estructura (se actualiza dinÃ¡micamente)
         self._struct_lbl = ctk.CTkLabel(self, text="",
                                          text_color=C_HINT,
                                          font=ctk.CTkFont(size=10),
                                          justify="left")
         self._struct_lbl.pack(anchor="w", padx=18, pady=(0, 6))
 
-        # ── Ubicación del proyecto ────────────────────────────────
+        # â”€â”€ UbicaciÃ³n del proyecto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_proj_loc', self._refs)
 
         r_root = _row(self)
@@ -2350,7 +2412,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
         self.root_folder_var.trace_add("write", self._update_struct)
         ctk.CTkEntry(r_root, textvariable=self.root_folder_var).pack(
             side="left", fill="x", expand=True, padx=(4, 4))
-        ctk.CTkButton(r_root, text="…", width=36,
+        ctk.CTkButton(r_root, text="â€¦", width=36,
                        command=self._browse_root).pack(side="left")
 
         r_name = _row(self)
@@ -2362,7 +2424,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
         ctk.CTkEntry(r_name, textvariable=self.proj_name_var).pack(
             side="left", fill="x", expand=True, padx=(4, 0))
 
-        # ── Dispositivos ──────────────────────────────────────────
+        # â”€â”€ Dispositivos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_proj_dev', self._refs)
         self._frow('lbl_prefix',  "CBG_",             "p_prefix",  w=130)
         self._frow('lbl_from',    "0081",              "p_from",    w=100)
@@ -2378,7 +2440,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
         self._prev_lbl.pack(anchor="w", padx=18, pady=(0, 4))
         self._update_preview()
 
-        # ── Parámetros CSV ────────────────────────────────────────
+        # â”€â”€ ParÃ¡metros CSV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_proj_csv', self._refs)
         self._frow('lbl_model',   "210",                              "p_model")
         self._frow('lbl_newskey', "0123456789ABCDEF0123456789ABCDEF", "p_newskey")
@@ -2398,7 +2460,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
         ctk.CTkEntry(r_coords, textvariable=self.p_lon_var, width=150).pack(
             side="left", padx=4)
 
-        # ── Tipo de etiqueta ──────────────────────────────────────
+        # â”€â”€ Tipo de etiqueta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_proj_lbl', self._refs)
         self.p_label_var = tk.StringVar(value="nortu")
         for val, label in [("nortu",    "RTU NO BLTE"),
@@ -2410,7 +2472,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
                                font=ctk.CTkFont(size=12)
                                ).pack(anchor="w", padx=28, pady=4)
 
-        # ── Serial (para PDF) ─────────────────────────────────────
+        # â”€â”€ Serial (para PDF) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_proj_ser', self._refs)
         r_ser = _row(self)
         lbl_ss = ctk.CTkLabel(r_ser, text=t('lbl_ser_start'), width=LBL_W, anchor="w")
@@ -2435,7 +2497,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
         )
         self._github_btn.pack(anchor="w", padx=18, pady=(0, 8))
 
-        # ── Parámetros JSON ───────────────────────────────────────
+        # â”€â”€ ParÃ¡metros JSON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_proj_jsn', self._refs)
 
         ctk.CTkLabel(self, text="Valvola:",
@@ -2470,7 +2532,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
 
         self._frow('lbl_sendinterval', "130000", "p_sendinterval", w=140)
 
-        # ── Botón principal ───────────────────────────────────────
+        # â”€â”€ BotÃ³n principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _div(self)
         self._btn_all = ctk.CTkButton(
             self, text=t('btn_gen_all'),
@@ -2490,7 +2552,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
 
         self._update_struct()
 
-    # ── helpers ──────────────────────────────────────────────────────────────
+    # â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _frow(self, key, default, attr, w=None):
         r = _row(self)
         lbl = ctk.CTkLabel(r, text=t(key), width=LBL_W, anchor="w")
@@ -2514,7 +2576,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
         self._btn_all.configure(text=t('btn_gen_all'))
 
     def _browse_root(self):
-        p = filedialog.askdirectory(title="Seleccionar carpeta raíz")
+        p = filedialog.askdirectory(title="Seleccionar carpeta raÃ­z")
         if p:
             self.root_folder_var.set(p)
 
@@ -2536,7 +2598,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
         self._prev_lbl.configure(text=txt)
 
     def _update_struct(self, *_):
-        root   = self.root_folder_var.get().strip() or "…"
+        root   = self.root_folder_var.get().strip() or "â€¦"
         name   = self.proj_name_var.get().strip()   or "NombreProyecto"
         try:
             n = int(self.p_to_var.get()) - int(self.p_from_var.get()) + 1
@@ -2544,10 +2606,10 @@ class ProjectTab(ctk.CTkScrollableFrame):
             n = "?"
         pfx = self.p_prefix_var.get() if hasattr(self, 'p_prefix_var') else ""
         txt = (
-            f"  📁  {root}/{name}/\n"
-            f"       ├── CSV/         →  {name}.csv\n"
-            f"       ├── JSON/        →  {n} archivos  ({pfx}…).JSON\n"
-            f"       └── etiquette/   →  {name}.pdf"
+            f"  ðŸ“  {root}/{name}/\n"
+            f"       â”œâ”€â”€ CSV/         â†’  {name}.csv\n"
+            f"       â”œâ”€â”€ JSON/        â†’  {n} archivos  ({pfx}â€¦).JSON\n"
+            f"       â””â”€â”€ etiquette/   â†’  {name}.pdf"
         )
         self._struct_lbl.configure(text=txt)
 
@@ -2556,7 +2618,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
             start = int(self.p_from_var.get().strip())
             end = int(self.p_to_var.get().strip())
             if end < start:
-                raise ValueError("'Hasta' debe ser ≥ 'Desde'")
+                raise ValueError("'Hasta' debe ser â‰¥ 'Desde'")
             settings = _load_serial_settings()
             registry = _serial_registry_fetch(settings)
             last_serial = int(registry["families"]["RTU"]["last_serial"] or 0)
@@ -2572,10 +2634,10 @@ class ProjectTab(ctk.CTkScrollableFrame):
         except Exception as exc:
             messagebox.showerror(t("serial_error_title"), str(exc))
 
-    # ── Generación ────────────────────────────────────────────────────────────
+    # â”€â”€ GeneraciÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _generate_all(self):
         try:
-            # ── Validaciones básicas ──────────────────────────────
+            # â”€â”€ Validaciones bÃ¡sicas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             root      = self.root_folder_var.get().strip()
             proj_name = self.proj_name_var.get().strip()
             prefix    = self.p_prefix_var.get().strip()
@@ -2598,13 +2660,13 @@ class ProjectTab(ctk.CTkScrollableFrame):
             sendinterval = int(self.p_sendinterval_var.get().strip())
 
             if not root:
-                messagebox.showerror("Error", "Selecciona una carpeta raíz."); return
+                messagebox.showerror("Error", "Selecciona una carpeta raÃ­z."); return
             if not proj_name:
                 messagebox.showerror("Error", "Escribe un nombre de proyecto."); return
             if not os.path.isdir(root):
-                messagebox.showerror("Error", "La carpeta raíz no existe."); return
+                messagebox.showerror("Error", "La carpeta raÃ­z no existe."); return
             if end < start:
-                messagebox.showerror("Error", "'Hasta' debe ser ≥ 'Desde'."); return
+                messagebox.showerror("Error", "'Hasta' debe ser â‰¥ 'Desde'."); return
             if len(deveui_s) != 16:
                 messagebox.showerror("Error", f"DevEUI debe tener 16 hex."); return
             int(deveui_s, 16)
@@ -2619,11 +2681,11 @@ class ProjectTab(ctk.CTkScrollableFrame):
             ser_start   = int(ser_raw)
 
             settings = _load_serial_settings()
-            self._status_lbl.configure(text="⏳  Sincronizando registro GitHub…")
+            self._status_lbl.configure(text="â³  Sincronizando registro GitHubâ€¦")
             self.update()
             _serial_registry_update_last(settings, "RTU", ser_start, ser_start + num_devices - 1, ser_year, num_devices)
 
-            # ── Crear estructura de carpetas ──────────────────────
+            # â”€â”€ Crear estructura de carpetas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             proj_dir  = os.path.join(root, proj_name)
             csv_dir   = os.path.join(proj_dir, "CSV")
             json_dir  = os.path.join(proj_dir, "JSON")
@@ -2631,10 +2693,10 @@ class ProjectTab(ctk.CTkScrollableFrame):
             for d in (proj_dir, csv_dir, json_dir, label_dir):
                 os.makedirs(d, exist_ok=True)
 
-            self._status_lbl.configure(text="⏳  Generando…")
+            self._status_lbl.configure(text="â³  Generandoâ€¦")
             self.update()
 
-            # ── 1. CSV ────────────────────────────────────────────
+            # â”€â”€ 1. CSV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             csv_path = os.path.join(csv_dir, f"{proj_name}.csv")
             hdr = ["Name","Model","AppEUI","DevEUI","Auth","AppKey","DevAddr",
                    "NewSKey","AppSKey","Class","Latitude","Longitude","Tag",
@@ -2654,14 +2716,14 @@ class ProjectTab(ctk.CTkScrollableFrame):
                 w = csv.writer(f, delimiter=";")
                 w.writerow(hdr); w.writerows(rows)
 
-            # ── 2. JSON ───────────────────────────────────────────
+            # â”€â”€ 2. JSON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             for i, dev in enumerate(devices):
                 data = _build_json(dev['dev_eui'], dev['dev_addr'], valve, allarme, sendinterval, adc_on)
                 with open(os.path.join(json_dir, f"{dev['name']}.JSON"),
                           "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=4)
 
-            # ── 3. PDF Etichette ──────────────────────────────────
+            # â”€â”€ 3. PDF Etichette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             pdf_devices = []
             for i, dev in enumerate(devices):
                 sn = format(ser_start+i, f"0{ser_width}d")
@@ -2677,7 +2739,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
                       rtu_header=(label_opt == "tubo"),
                       loraconta=(label_opt == "loracont"))
 
-            # ── Resultado ─────────────────────────────────────────
+            # â”€â”€ Resultado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             self._status_lbl.configure(
                 text=t("serial_repo_reserved").format(
                     family=_serial_family_name("RTU"),
@@ -2685,31 +2747,31 @@ class ProjectTab(ctk.CTkScrollableFrame):
                     end=f"{ser_start + num_devices - 1:0{ser_width}d}",
                     year=ser_year,
                 ))
-            messagebox.showinfo("Éxito",
+            messagebox.showinfo("Ã‰xito",
                 f"Proyecto generado correctamente.\n\n"
-                f"  📁  {proj_name}/\n"
-                f"  ├── CSV/       →  {proj_name}.csv\n"
-                f"  ├── JSON/      →  {num_devices} archivos .JSON\n"
-                f"  └── etiquette/ →  {proj_name}.pdf\n\n"
+                f"  ðŸ“  {proj_name}/\n"
+                f"  â”œâ”€â”€ CSV/       â†’  {proj_name}.csv\n"
+                f"  â”œâ”€â”€ JSON/      â†’  {num_devices} archivos .JSON\n"
+                f"  â””â”€â”€ etiquette/ â†’  {proj_name}.pdf\n\n"
                 f"  Dispositivos:  {num_devices}\n"
-                f"  Válvula:       {'Motorizzata' if valve=='motorizzata' else 'ELBA'}\n"
+                f"  VÃ¡lvula:       {'Motorizzata' if valve=='motorizzata' else 'ELBA'}\n"
                 f"  Allarme:       {'ON' if allarme else 'OFF'}\n"
                 f"  Etiqueta:      {label_opt.upper()}\n\n"
                 f"Carpeta:\n{proj_dir}")
 
         except ValueError as e:
-            messagebox.showerror("Error de valor", f"Verifica campos numéricos/hex.\n\nDetalle: {e}")
+            messagebox.showerror("Error de valor", f"Verifica campos numÃ©ricos/hex.\n\nDetalle: {e}")
         except ImportError as e:
-            messagebox.showerror("Librería faltante", str(e))
+            messagebox.showerror("LibrerÃ­a faltante", str(e))
         except PermissionError:
             messagebox.showerror("Error de permisos", "No se pudo escribir en la carpeta.")
         except Exception as e:
             messagebox.showerror("Error inesperado", str(e))
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Tab: Etichette TIC12 / I-TIC
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class TICLabelTab(ctk.CTkScrollableFrame):
     def __init__(self, parent, product_name, title_key):
         super().__init__(parent, fg_color=("white", "#1e1e2e"),
@@ -2758,7 +2820,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
         self.tic_pdf_var = tk.StringVar()
         ctk.CTkEntry(r, textvariable=self.tic_pdf_var).pack(
             side="left", fill="x", expand=True, padx=(4, 4))
-        ctk.CTkButton(r, text="…", width=36,
+        ctk.CTkButton(r, text="â€¦", width=36,
                        command=self._browse_pdf).pack(side="left")
 
         _div(self)
@@ -2814,7 +2876,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
         start = int(self.tic_from_var.get().strip())
         end = int(self.tic_to_var.get().strip())
         if end < start:
-            raise ValueError("'Hasta' debe ser ≥ 'Desde'")
+            raise ValueError("'Hasta' debe ser â‰¥ 'Desde'")
         return start, end, end - start + 1
 
     def _use_next_serial_from_github(self):
@@ -2854,7 +2916,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
                 messagebox.showerror("Error", "Escribe el a\u00f1o"); return
 
             settings = _load_serial_settings()
-            self._status_lbl.configure(text="⏳  Sincronizando registro GitHub…")
+            self._status_lbl.configure(text="â³  Sincronizando registro GitHubâ€¦")
             self.update()
             _serial_registry_update_last(settings, self._family, start, end, year, end - start + 1)
 
@@ -2891,9 +2953,9 @@ class TICLabelTab(ctk.CTkScrollableFrame):
             messagebox.showerror("Error inesperado", str(e))
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # App
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 GW_COL_WIDTHS_PT = [114.75, 157.50, 180.75]
 GW_ROW_HEIGHTS_PT = [21.0, 16.9, 9.0, 12.0, 10.9, 3.6, 15.0, 15.0, 15.0]
 GW_GAPS_PT = [24.6, 27.6, 27.0, 30.0]
@@ -3732,9 +3794,10 @@ class SerialTab(ctk.CTkScrollableFrame):
         self._repo_title_lbl = None
         self._repo_desc_lbl = None
         self._repo_refs = {}
-        self._repo_path_var = tk.StringVar(value=self._serial_settings.get("repo_path", ""))
+        self._repo_path_var = tk.StringVar(value=self._serial_settings.get("registry_url", DEFAULT_SERIAL_SETTINGS["registry_url"]))
         self._repo_branch_var = tk.StringVar(value=self._serial_settings.get("branch", "main"))
-        self._repo_file_var = tk.StringVar(value=self._serial_settings.get("registry_file", "serial_registry.json"))
+        self._repo_file_var = tk.StringVar(value=self._serial_settings.get("api_url", DEFAULT_SERIAL_SETTINGS["api_url"]))
+        self._repo_token_var = tk.StringVar(value=self._serial_settings.get("token", ""))
         self._repo_station_var = tk.StringVar(value=self._serial_settings.get("station_name", DEFAULT_SERIAL_SETTINGS["station_name"]))
         self._family_vars = {family: tk.StringVar(value="0") for family in SERIAL_FAMILY_ORDER}
         self._family_labels = {}
@@ -3844,9 +3907,10 @@ class SerialTab(ctk.CTkScrollableFrame):
         )
         self._repo_desc_lbl.pack(anchor="w", padx=18, pady=(0, 8))
 
-        self._repo_field("serial_repo_path", self._repo_path_var, browse=True)
+        self._repo_field("serial_repo_path", self._repo_path_var)
         self._repo_field("serial_repo_branch", self._repo_branch_var, width=140)
         self._repo_field("serial_repo_file", self._repo_file_var)
+        self._repo_field("serial_repo_token", self._repo_token_var, width=260, masked=True)
         self._repo_field("serial_repo_station", self._repo_station_var, width=220)
 
         btn_row = _row(self)
@@ -3900,17 +3964,16 @@ class SerialTab(ctk.CTkScrollableFrame):
         self._status_lbl.pack(anchor="w", padx=18, pady=(4, 14))
         self._load_registry_values(_default_serial_registry())
 
-    def _repo_field(self, key, variable, width=None, browse=False):
+    def _repo_field(self, key, variable, width=None, masked=False):
         row = _row(self)
         lbl = ctk.CTkLabel(row, text=t(key), width=LBL_W, anchor="w")
         lbl.pack(side="left")
         self._repo_refs[key] = lbl
+        entry_kwargs = {"show": "*"} if masked else {}
         if width:
-            ctk.CTkEntry(row, textvariable=variable, width=width).pack(side="left", padx=(4, 0))
+            ctk.CTkEntry(row, textvariable=variable, width=width, **entry_kwargs).pack(side="left", padx=(4, 0))
         else:
-            ctk.CTkEntry(row, textvariable=variable).pack(side="left", fill="x", expand=True, padx=(4, 4))
-        if browse:
-            ctk.CTkButton(row, text="…", width=36, command=self._browse_repo).pack(side="left")
+            ctk.CTkEntry(row, textvariable=variable, **entry_kwargs).pack(side="left", fill="x", expand=True, padx=(4, 4))
 
     def _save_package(self, filename):
         source = _resource(filename)
@@ -3938,16 +4001,13 @@ class SerialTab(ctk.CTkScrollableFrame):
     def _save_hyperterminal(self):
         self._save_package(self.PACKAGE_FILE)
 
-    def _browse_repo(self):
-        path = filedialog.askdirectory(title=t("serial_repo_path"))
-        if path:
-            self._repo_path_var.set(path)
-
+    
     def _collect_settings(self):
         return {
-            "repo_path": self._repo_path_var.get().strip(),
+            "registry_url": self._repo_path_var.get().strip() or DEFAULT_SERIAL_SETTINGS["registry_url"],
             "branch": self._repo_branch_var.get().strip() or "main",
-            "registry_file": self._repo_file_var.get().strip() or "serial_registry.json",
+            "api_url": self._repo_file_var.get().strip() or DEFAULT_SERIAL_SETTINGS["api_url"],
+            "token": self._repo_token_var.get().strip(),
             "station_name": self._repo_station_var.get().strip() or DEFAULT_SERIAL_SETTINGS["station_name"],
         }
 
@@ -4015,8 +4075,8 @@ class SerialTab(ctk.CTkScrollableFrame):
 class App:
     def __init__(self, root: ctk.CTk):
         self.root = root
-        root.title("Device Manager — TECNIDRO")
-        # Centrar en pantalla al 90% del monitor disponible (máx 1200×960)
+        root.title("Device Manager â€” TECNIDRO")
+        # Centrar en pantalla al 90% del monitor disponible (mÃ¡x 1200Ã—960)
         root.update_idletasks()
         sw = root.winfo_screenwidth()
         sh = root.winfo_screenheight()
@@ -4027,7 +4087,7 @@ class App:
         root.geometry(f"{w}x{h}+{x}+{y}")
         root.minsize(820, 640)
 
-        # ── Header ────────────────────────────────────────────────
+        # â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         hdr = ctk.CTkFrame(root, corner_radius=0, height=60, fg_color=C_HDR_BG)
         hdr.pack(fill="x")
         hdr.pack_propagate(False)
@@ -4038,7 +4098,7 @@ class App:
                      font=ctk.CTkFont(size=11),
                      text_color=C_HINT).pack(side="left")
 
-        # Logo — CTkImage cambia automáticamente entre light y dark
+        # Logo â€” CTkImage cambia automÃ¡ticamente entre light y dark
         img_l, img_d, dw, dh = _make_logo_images(display_h=52)
         if img_l and img_d:
             logo_ctk = ctk.CTkImage(light_image=img_l, dark_image=img_d,
@@ -4046,19 +4106,19 @@ class App:
             ctk.CTkLabel(hdr, image=logo_ctk, text="",
                          fg_color="transparent").pack(side="right", padx=18)
 
-        # ── Tabview  (nombres FIJOS — no se renombran) ────────────
+        # â”€â”€ Tabview  (nombres FIJOS â€” no se renombran) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         # Los tabs tienen nombres neutros cortos; el contenido se traduce.
         self.tabview = ctk.CTkTabview(root, corner_radius=8, border_width=0)
         self.tabview.pack(fill="both", expand=True, padx=10, pady=(6, 4))
 
-        # Pestañas principales: RTU  |  GW  |  I-TIC  |  TIC12  |  FW Version  |  ⚙ Language
+        # PestaÃ±as principales: RTU  |  GW  |  I-TIC  |  TIC12  |  FW Version  |  âš™ Language
         T_RTU   = "RTU"
         T_GW    = "GW"
         T_ITIC  = "I-TIC"
         T_TIC12 = "TIC12"
         T_FW    = "FW Version"
         T_SERIAL = "Serial"
-        T_LANG  = "⚙  Language"
+        T_LANG  = "âš™  Language"
 
         for name in (T_RTU, T_GW, T_ITIC, T_TIC12, T_FW, T_SERIAL, T_LANG):
             self.tabview.add(name)
@@ -4071,7 +4131,7 @@ class App:
         SerialTab(self.tabview.tab(T_SERIAL)).pack(fill="both", expand=True)
         LangTab(self.tabview.tab(T_LANG)).pack(fill="both", expand=True)
 
-        # ── Sub-tabview dentro de RTU: CSV | Etiquetas | JSON | Proyecto ──
+        # â”€â”€ Sub-tabview dentro de RTU: CSV | Etiquetas | JSON | Proyecto â”€â”€
         rtu_sub = ctk.CTkTabview(self.tabview.tab(T_RTU),
                                   corner_radius=6, border_width=0)
         rtu_sub.pack(fill="both", expand=True, padx=4, pady=4)
@@ -4082,11 +4142,11 @@ class App:
         JSONTab(rtu_sub.tab("JSON")).pack(fill="both", expand=True)
         EtichetteTab(rtu_sub.tab("Etichette")).pack(fill="both", expand=True)
 
-        # ── Status bar ────────────────────────────────────────────
+        # â”€â”€ Status bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         bar = ctk.CTkFrame(root, corner_radius=0, height=24, fg_color=C_BAR_BG)
         bar.pack(fill="x", side="bottom")
         bar.pack_propagate(False)
-        ctk.CTkLabel(bar, text=f"  Generador CSV & Etichette PDF  —  v{APP_VERSION}",
+        ctk.CTkLabel(bar, text=f"  Generador CSV & Etichette PDF  â€”  v{APP_VERSION}",
                      font=ctk.CTkFont(size=10),
                      text_color=C_BAR_TEXT).pack(side="left", padx=8)
         ctk.CTkLabel(bar, text="by Manuel Rodriguez  ",
@@ -4104,3 +4164,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
