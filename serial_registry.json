@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-05-08T12:01:33Z",
+  "updated_at": "2026-05-08T12:06:14Z",
   "families": {
     "RTU": {
       "last_serial": 4937,
@@ -27,11 +27,11 @@
       "last_year": ""
     },
     "TIC12": {
-      "last_serial": 56,
-      "updated_at": "2026-05-08T12:01:33Z",
+      "last_serial": 94,
+      "updated_at": "2026-05-08T12:06:14Z",
       "updated_by": "PC-MANUEL",
       "last_count": 0,
-      "last_range": "0056-0056",
+      "last_range": "0094-0094",
       "last_year": "2026"
     }
   }
