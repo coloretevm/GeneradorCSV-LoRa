@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.73
+
+- Dopo `Salva valore ...` o `Salva tutti i valori` nella scheda `Serial`, le sezioni `RTU`, `GW`, `I-TIC` e `TIC12` aggiornano subito il prossimo seriale disponibile da GitHub senza riavviare l app.
+- Lo stesso refresh automatico avviene anche dopo la generazione di PDF o progetti che aggiornano il registro seriali.
+- Nuova build ufficiale pubblicata come `Device_Manager_v73.exe`.
+
 ## 1.58
 
 - Nascosti i campi tecnici della scheda `Serial` che non servono all uso quotidiano.

@@ -1,5 +1,5 @@
 {
-  "version": "1.58",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v58.exe",
-  "notes": "Device Manager v1.58 nasconde i campi tecnici della scheda Serial, corregge il titolo finestra e ripulisce la vista struttura del progetto."
+  "version": "1.73",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v73.exe",
+  "notes": "Device Manager v1.73 aggiorna subito i prossimi seriali GitHub nelle altre schede dopo il salvataggio manuale o la generazione di etichette."
 }
