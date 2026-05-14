@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "updated_at": "2026-05-13T08:28:50Z",
+  "updated_at": "2026-05-14T08:44:56Z",
   "families": {
     "RTU": {
-      "last_serial": 7137,
-      "updated_at": "2026-05-13T08:28:49Z",
+      "last_serial": 7167,
+      "updated_at": "2026-05-14T08:44:56Z",
       "updated_by": "PC-MANUEL",
-      "last_count": 2200,
-      "last_range": "04938-07137",
+      "last_count": 30,
+      "last_range": "07138-07167",
       "last_year": "2026"
     },
     "GW": {
