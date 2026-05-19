@@ -1,5 +1,11 @@
-# Changelog
+﻿# Changelog
 
+## 1.109
+
+- Corretta la scheda `FW Version`: i pulsanti PIC della colonna destra tornano blu scuro per default e diventano verdi solo quando vengono cliccati.
+- I pulsanti firmware restano celesti senza piu essere sovrascritti dal tema globale dell applicazione.
+- Aggiornato il firmware `RTU LORACONT` al file `CONTATORE_REL.1.0.2_REV2.18.05.2026.production.hex`.
+- Nuova build ufficiale pubblicata come `Device_Manager_v109.exe`.
 ## 1.73
 
 - Dopo `Salva valore ...` o `Salva tutti i valori` nella scheda `Serial`, le sezioni `RTU`, `GW`, `I-TIC` e `TIC12` aggiornano subito il prossimo seriale disponibile da GitHub senza riavviare l app.
@@ -64,7 +70,7 @@
 ## 1.50
 
 - Corregida la carga del logo Tecnidro en las etiquetas `TIC12` e `I-TIC`.
-- Añadido respaldo automatico entre `logo.png` y `gw_logo_tecnidro.png`.
+- AÃ±adido respaldo automatico entre `logo.png` y `gw_logo_tecnidro.png`.
 - Nueva build oficial preparada como `Device_Manager_v50.exe`.
 
 ## 1.49
@@ -94,10 +100,10 @@
 ## 1.45
 
 - Cambio de nombre visual y de build a `Device Manager`.
-- Nueva pestaña `Serial` añadida despues de `FW Version`.
+- Nueva pestaÃ±a `Serial` aÃ±adida despues de `FW Version`.
 - `Serial` incluye descarga/exportacion de `Hyperterminal.zip`.
 - `Serial` incluye descarga/exportacion de `APP_BLE_SERIAL__25_01_2026_wx.zip` para `Terminal Antonio (RTU Bluetooth e LORACONT)`.
-- `Gateway` añade al inicio el comando de apagado de `X4S LTE` con boton para copiarlo.
+- `Gateway` aÃ±ade al inicio el comando de apagado de `X4S LTE` con boton para copiarlo.
 - El ejecutable oficial publicado pasa a ser `Device_Manager_v45.exe`.
 
 ## 1.43
@@ -107,3 +113,4 @@
 - RTU LORACONT: eliminada una fila de etiquetas por pagina y rejilla centrada en A4.
 - RTU LORACONT: logo corregido para imprimirse en negro.
 - RTU en tubo: eliminada una fila de etiquetas por pagina y rejilla centrada en A4.
+

@@ -1,5 +1,5 @@
-{
-  "version": "1.73",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v73.exe",
-  "notes": "Device Manager v1.73 aggiorna subito i prossimi seriali GitHub nelle altre schede dopo il salvataggio manuale o la generazione di etichette."
+﻿{
+  "version": "1.109",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v109.exe",
+  "notes": "Device Manager v1.109 corregge la scheda FW Version: i pulsanti PIC a destra tornano blu scuro di default, diventano verdi solo quando cliccati e aggiorna il firmware LORACONT al file CONTATORE_REL.1.0.2_REV2.18.05.2026.production.hex."
 }

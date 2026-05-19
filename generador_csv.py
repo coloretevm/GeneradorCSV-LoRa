@@ -18,8 +18,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.73"
-APP_BUILD_NAME = "Device_Manager_v73"
+APP_VERSION = "1.109"
+APP_BUILD_NAME = "Device_Manager_v109"
 SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
@@ -531,6 +531,7 @@ TRANSLATIONS = {
         'lbl_lat':       'Latitud:',
         'lbl_lon':       'Longitud:',
         'sec_extra':     'ParÃ¡metros adicionales',
+        'lbl_childnumber': 'Cantidad valvulas / childnumber:',
         'lbl_tag':       'Tag:',
         'lbl_alias':     'Alias:',
         'lbl_out_file':  'Archivo de salida:',
@@ -580,6 +581,13 @@ TRANSLATIONS = {
         'upd_download_title':'Guardar actualizaciÃ³n como...',
         'upd_success_restart':'La actualizaciÃ³n se descargÃ³. El programa se cerrarÃ¡ para instalar la nueva versiÃ³n.',
         'json_title':    'Generador de archivos JSON',
+        'sec_json_model':'Modelo dispositivo',
+        'json_model_rtu':'RTU',
+        'json_model_loracont':'LORACONT',
+        'sec_json_config':'Configuracion dispositivo',
+        'lbl_json_adc':'ADC:',
+        'lbl_json_counters':'Counters:',
+        'lbl_json_valves':'Valves:',
         'sec_valve':     'Tipo de vÃ¡lvula',
         'sec_allarme':   'Allarme Sportello',
         'sec_adc':       'ADC',
@@ -726,6 +734,22 @@ TRANSLATIONS = {
         'serial_family_gw': 'GW',
         'serial_family_itic': 'I-TIC',
         'serial_family_tic12': 'TIC12',
+        'manuals_title': 'Manuales',
+        'manuals_desc': 'Zona dedicada a manuales, guias y documentacion tecnica del programa y de los dispositivos.',
+        'manuals_section_library': 'Biblioteca manuales',
+        'manuals_group_itic': 'I-TIC',
+        'manuals_group_hydronet': 'Piattaforma Hydronet',
+        'manuals_group_tic12': 'TIC12',
+        'manuals_button_save': 'Guardar PDF',
+        'manuals_save_title': 'Guardar manual',
+        'manuals_saved': 'Manual guardado: {name}',
+        'manuals_missing': 'No se encontro el manual embebido: {name}',
+        'nav_manuals': 'Manuales',
+        'nav_language': 'Idiomas',
+        'header_manuals_title': 'Manuales',
+        'header_manuals_subtitle': 'Area dedicada a manuales, guias y documentacion tecnica.',
+        'header_language_title': 'Preferencias',
+        'header_language_subtitle': 'Idioma, tema y actualizaciones de la aplicacion.',
     },
     'en': {
         'csv_title':     'CSV Generator - LoRa Devices',
@@ -745,6 +769,7 @@ TRANSLATIONS = {
         'lbl_lat':       'Latitude:',
         'lbl_lon':       'Longitude:',
         'sec_extra':     'Additional parameters',
+        'lbl_childnumber': 'Valve count / childnumber:',
         'lbl_tag':       'Tag:',
         'lbl_alias':     'Alias:',
         'lbl_out_file':  'Output file:',
@@ -794,6 +819,13 @@ TRANSLATIONS = {
         'upd_download_title':'Save update as...',
         'upd_success_restart':'The update was downloaded. The program will close to install the new version.',
         'json_title':    'JSON File Generator',
+        'sec_json_model':'Device model',
+        'json_model_rtu':'RTU',
+        'json_model_loracont':'LORACONT',
+        'sec_json_config':'Device configuration',
+        'lbl_json_adc':'ADC:',
+        'lbl_json_counters':'Counters:',
+        'lbl_json_valves':'Valves:',
         'sec_valve':     'Valve type',
         'sec_allarme':   'Door Alarm',
         'sec_adc':       'ADC',
@@ -911,6 +943,22 @@ TRANSLATIONS = {
         'serial_family_gw': 'GW',
         'serial_family_itic': 'I-TIC',
         'serial_family_tic12': 'TIC12',
+        'manuals_title': 'Manuals',
+        'manuals_desc': 'Area dedicated to manuals, guides, and technical documentation for the app and devices.',
+        'manuals_section_library': 'Manual library',
+        'manuals_group_itic': 'I-TIC',
+        'manuals_group_hydronet': 'Hydronet Platform',
+        'manuals_group_tic12': 'TIC12',
+        'manuals_button_save': 'Save PDF',
+        'manuals_save_title': 'Save manual',
+        'manuals_saved': 'Manual saved: {name}',
+        'manuals_missing': 'Embedded manual not found: {name}',
+        'nav_manuals': 'Manuals',
+        'nav_language': 'Languages',
+        'header_manuals_title': 'Manuals',
+        'header_manuals_subtitle': 'Area dedicated to manuals, guides, and technical documentation.',
+        'header_language_title': 'Preferences',
+        'header_language_subtitle': 'Language, theme, and application updates.',
     },
     'it': {
         'csv_title':     'Generatore CSV - Dispositivi LoRa',
@@ -930,6 +978,7 @@ TRANSLATIONS = {
         'lbl_lat':       'Latitudine:',
         'lbl_lon':       'Longitudine:',
         'sec_extra':     'Parametri aggiuntivi',
+        'lbl_childnumber': 'Numero valvole / childnumber:',
         'lbl_tag':       'Tag:',
         'lbl_alias':     'Alias:',
         'lbl_out_file':  'File di output:',
@@ -979,6 +1028,13 @@ TRANSLATIONS = {
         'upd_download_title':'Salva aggiornamento come...',
         'upd_success_restart':"L'aggiornamento e stato scaricato. Il programma verra chiuso per installare la nuova versione.",
         'json_title':    'Generatore file JSON',
+        'sec_json_model':'Modello dispositivo',
+        'json_model_rtu':'RTU',
+        'json_model_loracont':'LORACONT',
+        'sec_json_config':'Configurazione dispositivo',
+        'lbl_json_adc':'ADC:',
+        'lbl_json_counters':'Counters:',
+        'lbl_json_valves':'Valves:',
         'sec_valve':     'Tipo di valvola',
         'sec_allarme':   'Allarme Sportello',
         'sec_adc':       'ADC',
@@ -1125,6 +1181,22 @@ TRANSLATIONS = {
         'serial_family_gw': 'GW',
         'serial_family_itic': 'I-TIC',
         'serial_family_tic12': 'TIC12',
+        'manuals_title': 'Manuali',
+        'manuals_desc': 'Area dedicata a manuali, guide e documentazione tecnica del programma e dei dispositivi.',
+        'manuals_section_library': 'Libreria manuali',
+        'manuals_group_itic': 'I-TIC',
+        'manuals_group_hydronet': 'Piattaforma Hydronet',
+        'manuals_group_tic12': 'TIC12',
+        'manuals_button_save': 'Salva PDF',
+        'manuals_save_title': 'Salva manuale',
+        'manuals_saved': 'Manuale salvato: {name}',
+        'manuals_missing': 'Manuale incorporato non trovato: {name}',
+        'nav_manuals': 'Manuali',
+        'nav_language': 'Lingue',
+        'header_manuals_title': 'Manuali',
+        'header_manuals_subtitle': 'Area dedicata a manuali, guide e documentazione tecnica.',
+        'header_language_title': 'Lingue',
+        'header_language_subtitle': 'Lingua, tema e aggiornamenti dell\'applicazione.',
     },
 }
 
@@ -1489,40 +1561,158 @@ def _make_pdf(devices, output_path, include_bluetooth=True, rtu_header=False, lo
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 LBL_W = 200
 
-# Colores adaptativos  (light_mode, dark_mode)
-C_SEC_BG   = ("#cce0f5", "#162d4a")   # azul claro     / navy oscuro
-C_SEC_TEXT = ("#0d3060", "#82bcff")   # azul oscuro     / azul claro
-C_HINT     = ("#5577aa", "#8899aa")   # azul grisÃ¡ceo   / gris-azul
-C_STATUS   = ("#1a5a8a", "#6699bb")   # azul medio      / azul claro
-C_HDR_BG   = ("#1a3a6a", "#0e1c30")  # navy (igual en ambos temas â€” barra top profesional)
-C_HDR_TEXT = ("white",   "#82bcff")  # blanco / azul claro
-C_BAR_BG   = ("#1a3a6a", "#090f1a")  # navy (igual en ambos)
-C_BAR_TEXT = ("#aaccee", "#556677")  # azul pÃ¡lido / gris
-C_DIV      = ("#90b8d8", "#2a3a4a")  # azul gris claro / oscuro
+# Paleta premium
+# Light C: Cool Pearl Gray + Slate Blue
+# Dark 1: Dark Slate Blue
+C_APP_BG       = ("#eef2f6", "#0f1622")
+C_SHELL_BG     = ("#f5f7fa", "#223147")
+C_BODY_BG      = ("#f5f7fa", "#223147")
+C_CARD_BG      = ("#ffffff", "#2b3c55")
+C_CARD_ALT     = ("#e8edf3", "#314663")
+C_CARD_BORDER  = ("#c9d3df", "#4d6686")
+C_TEXT         = ("#223245", "#f3f8ff")
+C_MUTED        = ("#6b7a8c", "#bed0e4")
+C_ACCENT       = ("#54779b", "#8ab6ea")
+C_ACCENT_HOVER = ("#456783", "#74a2da")
+C_ACCENT_SOFT  = ("#dbe5ef", "#38526f")
+C_SEC_BG       = ("#e6ecf3", "#314866")
+C_SEC_TEXT     = ("#314a67", "#eef5ff")
+C_HINT         = ("#78879a", "#bdd0e5")
+C_STATUS       = ("#54779b", "#acd0ff")
+C_HDR_BG       = ("#e9eef4", "#1d2b3f")
+C_HDR_TEXT     = ("#223245", "#f7fbff")
+C_BAR_BG       = ("#e3e9f0", "#1a2637")
+C_BAR_TEXT     = ("#66778c", "#b0c3d8")
+C_DIV          = ("#d2dbe6", "#47607e")
+C_TAB_BG       = ("#e3e9f0", "#26384f")
+C_TAB_TEXT     = ("#3f5874", "#ebf4ff")
 
 
 def _sec(parent, key, refs=None):
     """Barra de secciÃ³n."""
-    f = ctk.CTkFrame(parent, fg_color=C_SEC_BG, corner_radius=6, height=30)
-    f.pack(fill="x", padx=6, pady=(14, 4))
+    f = ctk.CTkFrame(parent, fg_color=C_SEC_BG, corner_radius=14, height=34, border_width=1, border_color=C_CARD_BORDER)
+    f.pack(fill="x", padx=10, pady=(16, 6))
     f.pack_propagate(False)
     lbl = ctk.CTkLabel(f, text=t(key),
                        font=ctk.CTkFont(size=11, weight="bold"),
                        text_color=C_SEC_TEXT)
-    lbl.pack(side="left", padx=12)
+    lbl.pack(side="left", padx=14)
     if refs is not None:
         refs[f'_sec_{key}'] = lbl
     return lbl
 
 
 def _div(parent):
-    ctk.CTkFrame(parent, height=1, fg_color=C_DIV).pack(fill="x", padx=10, pady=(14, 6))
+    ctk.CTkFrame(parent, height=1, fg_color=C_DIV).pack(fill="x", padx=14, pady=(18, 10))
 
 
 def _row(parent, pady=3):
-    f = ctk.CTkFrame(parent, fg_color=("white", "#1e1e2e"))
-    f.pack(fill="x", padx=10, pady=pady)
+    f = ctk.CTkFrame(
+        parent,
+        fg_color=C_CARD_BG,
+        corner_radius=14,
+        border_width=1,
+        border_color=C_CARD_BORDER,
+    )
+    f.pack(fill="x", padx=14, pady=max(pady, 4))
     return f
+
+
+def _style_tabview(tabview, nested=False):
+    try:
+        tabview.configure(
+            fg_color="transparent",
+            segmented_button_fg_color=C_TAB_BG,
+            segmented_button_selected_color=C_ACCENT,
+            segmented_button_selected_hover_color=C_ACCENT_HOVER,
+            segmented_button_unselected_color=C_TAB_BG,
+            segmented_button_unselected_hover_color=C_ACCENT_SOFT,
+            text_color=C_TAB_TEXT,
+            corner_radius=18 if not nested else 14,
+            border_width=0,
+        )
+    except Exception:
+        pass
+
+
+def _apply_premium_theme(widget):
+    try:
+        if getattr(widget, "_dm_style_locked", False):
+            pass
+        if isinstance(widget, ctk.CTkScrollableFrame):
+            widget.configure(fg_color="transparent")
+        elif isinstance(widget, ctk.CTkTabview):
+            _style_tabview(widget, nested=False)
+        elif isinstance(widget, ctk.CTkEntry):
+            widget.configure(
+                fg_color=C_CARD_ALT,
+                border_color=C_CARD_BORDER,
+                text_color=C_TEXT,
+                corner_radius=12,
+                border_width=1,
+                height=36,
+            )
+        elif isinstance(widget, ctk.CTkTextbox):
+            widget.configure(
+                fg_color=C_CARD_ALT,
+                border_color=C_CARD_BORDER,
+                text_color=C_TEXT,
+                corner_radius=12,
+                border_width=1,
+            )
+        elif isinstance(widget, ctk.CTkOptionMenu):
+            widget.configure(
+                fg_color=C_CARD_ALT,
+                button_color=C_ACCENT,
+                button_hover_color=C_ACCENT_HOVER,
+                text_color=C_TEXT,
+                corner_radius=12,
+            )
+        elif isinstance(widget, ctk.CTkButton):
+            if getattr(widget, "_dm_style_locked", False):
+                return
+            text = str(widget.cget("text") or "")
+            if text == "...":
+                widget.configure(
+                    fg_color=C_ACCENT_SOFT,
+                    hover_color=("#cfdae7", "#28425d"),
+                    text_color=C_SEC_TEXT,
+                    corner_radius=12,
+                    border_width=0,
+                )
+            else:
+                widget.configure(
+                    fg_color=C_ACCENT,
+                    hover_color=C_ACCENT_HOVER,
+                    text_color=("white", "#f7fbff"),
+                    corner_radius=14,
+                    border_width=0,
+                )
+        elif isinstance(widget, ctk.CTkRadioButton):
+            widget.configure(
+                fg_color=C_ACCENT,
+                hover_color=C_ACCENT_HOVER,
+                border_color=C_CARD_BORDER,
+                text_color=C_TEXT,
+            )
+        elif isinstance(widget, tk.Listbox):
+            widget.configure(
+                bg="#fffdfa",
+                fg="#1d2430",
+                selectbackground="#2f5c88",
+                selectforeground="white",
+                relief="flat",
+                highlightthickness=1,
+                highlightbackground="#d8cfc3",
+                bd=0,
+            )
+    except Exception:
+        pass
+    try:
+        for child in widget.winfo_children():
+            _apply_premium_theme(child)
+    except Exception:
+        pass
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1530,7 +1720,7 @@ def _row(parent, pady=3):
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class CSVTab(ctk.CTkScrollableFrame):
     def __init__(self, parent):
-        super().__init__(parent, fg_color=("white", "#1e1e2e"),
+        super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
         self._refs = {}
         self._build()
@@ -1586,15 +1776,14 @@ class CSVTab(ctk.CTkScrollableFrame):
         # â”€â”€ Extra â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_extra', self._refs)
         re = _row(self)
-        ctk.CTkLabel(re, text="childnumber:", width=LBL_W, anchor="w").pack(side="left")
+        lbl_childnumber = ctk.CTkLabel(re, text=t('lbl_childnumber'), width=LBL_W, anchor="w")
+        lbl_childnumber.pack(side="left")
+        self._refs['lbl_childnumber'] = lbl_childnumber
         self.childnumber_var = tk.StringVar(value="1")
         ctk.CTkEntry(re, textvariable=self.childnumber_var, width=100).pack(side="left", padx=(4, 18))
         ctk.CTkLabel(re, text="devStatusReqInterval:", width=170, anchor="w").pack(side="left")
         self.devstatusreqinterval_var = tk.StringVar(value="0")
         ctk.CTkEntry(re, textvariable=self.devstatusreqinterval_var, width=80).pack(side="left", padx=4)
-        self._frow('lbl_tag',   "", "tag")
-        self._frow('lbl_alias', "", "alias")
-
         # â”€â”€ Output â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _div(self)
         ro = _row(self)
@@ -1665,13 +1854,14 @@ class CSVTab(ctk.CTkScrollableFrame):
             longitude    = self.longitude_var.get().strip()
             childnumber  = self.childnumber_var.get().strip()
             devstatusreq = self.devstatusreqinterval_var.get().strip()
-            tag          = self.tag_var.get().strip()
-            alias        = self.alias_var.get().strip()
+            tag          = ""
+            alias        = ""
             output_file  = self.csv_output_var.get().strip()
 
             if not output_file: messagebox.showerror("Error","Selecciona un archivo de salida."); return
             num_devices = end-start+1
             if num_devices <= 0: messagebox.showerror("Error","'Hasta' debe ser â‰¥ 'Desde'."); return
+            if not childnumber.isdigit(): messagebox.showerror("Error","La cantidad de valvulas / childnumber debe ser numerica."); return
             if len(start_deveui) != 16: messagebox.showerror("Error",f"DevEUI debe tener 16 hex (tiene {len(start_deveui)})."); return
             int(start_deveui, 16)
             if len(new_skey) != 32: messagebox.showerror("Error",f"NewSKey debe tener 32 hex."); return
@@ -1710,7 +1900,7 @@ class CSVTab(ctk.CTkScrollableFrame):
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class EtichetteTab(ctk.CTkScrollableFrame):
     def __init__(self, parent):
-        super().__init__(parent, fg_color=("white", "#1e1e2e"),
+        super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
         self._devices = []
         self._refs    = {}
@@ -2018,7 +2208,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class LangTab(ctk.CTkFrame):
     def __init__(self, parent):
-        super().__init__(parent, fg_color=("white", "#1e1e2e"))
+        super().__init__(parent, fg_color=C_BODY_BG)
         self._is_dark = True
         self._update_settings = _load_update_settings()
         self._build()
@@ -2026,7 +2216,7 @@ class LangTab(ctk.CTkFrame):
 
     def _build(self):
         # Centrado vertical con spacer
-        ctk.CTkFrame(self, fg_color=("white", "#1e1e2e"), height=50).pack()
+        ctk.CTkFrame(self, fg_color="transparent", height=50).pack()
 
         self._lbl_title = ctk.CTkLabel(self, text=t('lang_title'),
                                         font=ctk.CTkFont(size=16, weight="bold"))
@@ -2193,16 +2383,21 @@ _JSON_BASE = {
 }
 
 
-def _build_json(dev_eui, dev_addr, valve_type, allarme_on, sendinterval=130000, adc_on=False):
+def _build_json(dev_eui, dev_addr, model_type, allarme_on, sendinterval=130000, adc_value=0, counter_count=1, valve_count=0, valve_type="motorizzata"):
     """Construye el dict JSON para un dispositivo.
     valve_type: 'motorizzata' â†’ valvetype=1  |  'elba' â†’ valvetype=0
     adc_on: True â†’ adc=1  |  False â†’ adc=0
     """
     data = copy.deepcopy(_JSON_BASE)
+    is_loracont = str(model_type).strip().lower() == "loracont"
+    counter_total = int(counter_count)
+    valve_total = 0 if is_loracont else int(valve_count)
     data["device"]["allarmi"]      = 1 if allarme_on else 0
-    data["device"]["adc"]          = 1 if adc_on else 0
-    data["device"]["valvetype"]    = 1 if valve_type == "motorizzata" else 0
+    data["device"]["adc"]          = int(adc_value)
+    data["device"]["valvetype"]    = 0 if is_loracont else (1 if valve_type == "motorizzata" else 0)
     data["device"]["sendinterval"] = int(sendinterval)
+    data["device"]["numcounters"]  = counter_total
+    data["device"]["numvalves"]    = valve_total
     data["radio"]["deui"]  = dev_eui
     data["radio"]["daddr"] = dev_addr
     data["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -2386,7 +2581,7 @@ def _make_tic_pdf(labels, output_path, product_name):
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class JSONTab(ctk.CTkScrollableFrame):
     def __init__(self, parent):
-        super().__init__(parent, fg_color=("white", "#1e1e2e"),
+        super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
         self._refs = {}
         self._build()
@@ -2421,14 +2616,57 @@ class JSONTab(ctk.CTkScrollableFrame):
         hint.pack(anchor="w", padx=18, pady=(0, 4))
         self._refs['lbl_devaddr_j'] = hint
 
+        _sec(self, 'sec_json_model', self._refs)
+        self.json_model_var = tk.StringVar(value="rtu")
+        self._json_model_rtu_btn = ctk.CTkRadioButton(
+            self, text=t('json_model_rtu'),
+            variable=self.json_model_var, value="rtu",
+            font=ctk.CTkFont(size=13)
+        )
+        self._json_model_rtu_btn.pack(anchor="w", padx=28, pady=6)
+        self._json_model_loracont_btn = ctk.CTkRadioButton(
+            self, text=t('json_model_loracont'),
+            variable=self.json_model_var, value="loracont",
+            font=ctk.CTkFont(size=13)
+        )
+        self._json_model_loracont_btn.pack(anchor="w", padx=28, pady=6)
+        self.json_model_var.trace_add("write", self._sync_json_model_type)
+
+        _sec(self, 'sec_json_config', self._refs)
+        r_adc = _row(self)
+        lbl_json_adc = ctk.CTkLabel(r_adc, text=t('lbl_json_adc'), width=LBL_W, anchor="w")
+        lbl_json_adc.pack(side="left")
+        self._refs['lbl_json_adc'] = lbl_json_adc
+        self.json_adc_var = tk.StringVar(value="0")
+        self._json_adc_menu = ctk.CTkOptionMenu(r_adc, variable=self.json_adc_var, values=["0", "1"], width=120)
+        self._json_adc_menu.pack(side="left", padx=(4, 0))
+
+        r_counters = _row(self)
+        lbl_json_counters = ctk.CTkLabel(r_counters, text=t('lbl_json_counters'), width=LBL_W, anchor="w")
+        lbl_json_counters.pack(side="left")
+        self._refs['lbl_json_counters'] = lbl_json_counters
+        self.json_counters_var = tk.StringVar(value="1")
+        self._json_counters_menu = ctk.CTkOptionMenu(r_counters, variable=self.json_counters_var, values=[str(i) for i in range(9)], width=120)
+        self._json_counters_menu.pack(side="left", padx=(4, 0))
+
         # â”€â”€ Tipo de vÃ¡lvula â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_valve', self._refs)
         self.valve_var = tk.StringVar(value="motorizzata")
+        self._json_valve_buttons = []
         for val, label in [("motorizzata", "Valvola Motorizzata"), ("elba", "ELBA")]:
-            ctk.CTkRadioButton(self, text=label,
-                               variable=self.valve_var, value=val,
-                               font=ctk.CTkFont(size=13)
-                               ).pack(anchor="w", padx=28, pady=6)
+            btn = ctk.CTkRadioButton(self, text=label,
+                                     variable=self.valve_var, value=val,
+                                     font=ctk.CTkFont(size=13))
+            btn.pack(anchor="w", padx=28, pady=6)
+            self._json_valve_buttons.append(btn)
+
+        self._json_valves_row = _row(self)
+        lbl_json_valves = ctk.CTkLabel(self._json_valves_row, text=t('lbl_json_valves'), width=LBL_W, anchor="w")
+        lbl_json_valves.pack(side="left")
+        self._refs['lbl_json_valves'] = lbl_json_valves
+        self.json_valves_var = tk.StringVar(value="1")
+        self._json_valves_menu = ctk.CTkOptionMenu(self._json_valves_row, variable=self.json_valves_var, values=[str(i) for i in range(9)], width=120)
+        self._json_valves_menu.pack(side="left", padx=(4, 0))
 
         # â”€â”€ Allarme Sportello â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_allarme', self._refs)
@@ -2439,18 +2677,10 @@ class JSONTab(ctk.CTkScrollableFrame):
                                font=ctk.CTkFont(size=13)
                                ).pack(anchor="w", padx=28, pady=6)
 
-        # â”€â”€ ADC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        _sec(self, 'sec_adc', self._refs)
-        self.adc_var = tk.StringVar(value="off")
-        for val, label in [("on", "ON"), ("off", "OFF")]:
-            ctk.CTkRadioButton(self, text=label,
-                               variable=self.adc_var, value=val,
-                               font=ctk.CTkFont(size=13)
-                               ).pack(anchor="w", padx=28, pady=6)
-
         # â”€â”€ ParÃ¡metros de envÃ­o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_send_params', self._refs)
         self._frow('lbl_sendinterval', "130000", "j_sendinterval", w=140)
+        self._sync_json_model_type()
 
         # â”€â”€ Carpeta de salida â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_out_json', self._refs)
@@ -2486,15 +2716,45 @@ class JSONTab(ctk.CTkScrollableFrame):
         var = tk.StringVar(value=default)
         setattr(self, f"{attr}_var", var)
         if w:
-            ctk.CTkEntry(r, textvariable=var, width=w).pack(side="left", padx=(4, 0))
+            entry = ctk.CTkEntry(r, textvariable=var, width=w)
+            entry.pack(side="left", padx=(4, 0))
         else:
-            ctk.CTkEntry(r, textvariable=var).pack(side="left", fill="x", expand=True, padx=(4, 0))
+            entry = ctk.CTkEntry(r, textvariable=var)
+            entry.pack(side="left", fill="x", expand=True, padx=(4, 0))
+        setattr(self, f"{attr}_entry", entry)
 
     def _refresh_lang(self):
         self._lbl_title.configure(text=t('json_title'))
         for key, w in self._refs.items():
             w.configure(text=t(key[5:]) if key.startswith('_sec_') else t(key))
+        self._json_model_rtu_btn.configure(text=t('json_model_rtu'))
+        self._json_model_loracont_btn.configure(text=t('json_model_loracont'))
+        self._sync_json_model_type()
         self._update_preview()
+
+    def _sync_json_model_type(self, *_):
+        try:
+            is_loracont = self.json_model_var.get() == "loracont"
+            if is_loracont:
+                self._json_counters_menu.configure(values=["0", "1"])
+                if self.json_counters_var.get() not in ("0", "1"):
+                    self.json_counters_var.set("0")
+                self.json_valves_var.set("0")
+                self._refs['_sec_sec_valve'].master.pack_forget()
+                for btn in self._json_valve_buttons:
+                    btn.pack_forget()
+                self._json_valves_row.pack_forget()
+            else:
+                self._json_counters_menu.configure(values=[str(i) for i in range(9)])
+                if self.json_counters_var.get() not in [str(i) for i in range(9)]:
+                    self.json_counters_var.set("1")
+                before_widget = self._refs['_sec_sec_allarme'].master
+                self._refs['_sec_sec_valve'].master.pack(before=before_widget, fill="x", padx=6, pady=(14, 4))
+                for btn in self._json_valve_buttons:
+                    btn.pack(before=before_widget, anchor="w", padx=28, pady=6)
+                self._json_valves_row.pack(before=before_widget, fill="x", padx=10, pady=3)
+        except Exception:
+            pass
 
     def _update_preview(self, *_):
         try:
@@ -2527,9 +2787,12 @@ class JSONTab(ctk.CTkScrollableFrame):
             end          = int(self.j_to_var.get().strip())
             deveui_s     = self.j_deveui_var.get().strip().upper()
             folder       = self.out_folder_var.get().strip()
+            model_type   = self.json_model_var.get().strip()
             valve        = self.valve_var.get()
             allarme      = (self.allarme_var.get() == "on")
-            adc_on       = (self.adc_var.get() == "on")
+            adc_value    = self.json_adc_var.get().strip() or "0"
+            counter_count = self.json_counters_var.get().strip() or "0"
+            valve_count  = "0" if model_type == "loracont" else (self.json_valves_var.get().strip() or "0")
             sendinterval = int(self.j_sendinterval_var.get().strip())
 
             if not folder:
@@ -2538,6 +2801,12 @@ class JSONTab(ctk.CTkScrollableFrame):
                 messagebox.showerror("Error", "La carpeta no existe."); return
             if end < start:
                 messagebox.showerror("Error", "'Hasta' debe ser â‰¥ 'Desde'."); return
+            if adc_value not in ("0", "1"):
+                messagebox.showerror("Error", "ADC debe ser 0 o 1."); return
+            if not counter_count.isdigit():
+                messagebox.showerror("Error", "Counters debe ser numerico."); return
+            if not valve_count.isdigit():
+                messagebox.showerror("Error", "Valves debe ser numerico."); return
             if len(deveui_s) != 16:
                 messagebox.showerror("Error", f"DevEUI debe tener 16 hex (tiene {len(deveui_s)})."); return
             int(deveui_s, 16)
@@ -2552,7 +2821,17 @@ class JSONTab(ctk.CTkScrollableFrame):
                 name    = f"{prefix}{start + i:0{nw}d}"
                 dev_eui = format(deveui_int + i, "016X")
                 dev_addr = dev_eui[-8:]
-                data = _build_json(dev_eui, dev_addr, valve, allarme, sendinterval, adc_on)
+                data = _build_json(
+                    dev_eui,
+                    dev_addr,
+                    model_type,
+                    allarme,
+                    sendinterval,
+                    adc_value,
+                    counter_count,
+                    valve_count,
+                    valve,
+                )
                 filepath = os.path.join(folder, f"{name}.JSON")
                 with open(filepath, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=4)
@@ -2581,7 +2860,7 @@ class JSONTab(ctk.CTkScrollableFrame):
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class ProjectTab(ctk.CTkScrollableFrame):
     def __init__(self, parent):
-        super().__init__(parent, fg_color=("white", "#1e1e2e"),
+        super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
         self._refs = {}
         self._build()
@@ -2659,6 +2938,13 @@ class ProjectTab(ctk.CTkScrollableFrame):
         self.p_lon_var = tk.StringVar()
         ctk.CTkEntry(r_coords, textvariable=self.p_lon_var, width=150).pack(
             side="left", padx=4)
+        r_child = _row(self)
+        lbl_childnumber = ctk.CTkLabel(r_child, text=t('lbl_childnumber'), width=LBL_W, anchor="w")
+        lbl_childnumber.pack(side="left")
+        self._refs['lbl_childnumber'] = lbl_childnumber
+        self.p_childnumber_var = tk.StringVar(value="1")
+        ctk.CTkEntry(r_child, textvariable=self.p_childnumber_var, width=120).pack(
+            side="left", padx=(4, 18))
 
         # â”€â”€ Tipo de etiqueta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_proj_lbl', self._refs)
@@ -2671,6 +2957,8 @@ class ProjectTab(ctk.CTkScrollableFrame):
                                variable=self.p_label_var, value=val,
                                font=ctk.CTkFont(size=12)
                                ).pack(anchor="w", padx=28, pady=4)
+        self.p_label_var.trace_add("write", self._sync_project_model_from_label)
+        self._sync_project_model_from_label()
 
         # â”€â”€ Serial (para PDF) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_proj_ser', self._refs)
@@ -2690,20 +2978,48 @@ class ProjectTab(ctk.CTkScrollableFrame):
 
         # â”€â”€ ParÃ¡metros JSON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_proj_jsn', self._refs)
+        r_proj_adc = _row(self)
+        lbl_proj_adc = ctk.CTkLabel(r_proj_adc, text=t('lbl_json_adc'), width=LBL_W, anchor="w")
+        lbl_proj_adc.pack(side="left")
+        self._refs['proj_lbl_json_adc'] = lbl_proj_adc
+        self.p_json_adc_var = tk.StringVar(value="0")
+        self._proj_json_adc_menu = ctk.CTkOptionMenu(
+            r_proj_adc, variable=self.p_json_adc_var, values=["0", "1"], width=120
+        )
+        self._proj_json_adc_menu.pack(side="left", padx=(4, 0))
 
-        ctk.CTkLabel(self, text="Valvola:",
-                     font=ctk.CTkFont(size=11, weight="bold"),
-                     text_color=C_SEC_TEXT).pack(anchor="w", padx=16, pady=(6, 2))
+        r_proj_counters = _row(self)
+        lbl_proj_counters = ctk.CTkLabel(r_proj_counters, text=t('lbl_json_counters'), width=LBL_W, anchor="w")
+        lbl_proj_counters.pack(side="left")
+        self._refs['proj_lbl_json_counters'] = lbl_proj_counters
+        self.p_json_counters_var = tk.StringVar(value="1")
+        self._proj_json_counters_menu = ctk.CTkOptionMenu(
+            r_proj_counters, variable=self.p_json_counters_var, values=[str(i) for i in range(9)], width=120
+        )
+        self._proj_json_counters_menu.pack(side="left", padx=(4, 0))
+
+        _sec(self, 'sec_valve', self._refs)
         self.p_valve_var = tk.StringVar(value="motorizzata")
+        self._project_valve_buttons = []
         for val, label in [("motorizzata", "Valvola Motorizzata"), ("elba", "ELBA")]:
-            ctk.CTkRadioButton(self, text=label,
-                               variable=self.p_valve_var, value=val,
-                               font=ctk.CTkFont(size=12)
-                               ).pack(anchor="w", padx=28, pady=3)
+            btn = ctk.CTkRadioButton(
+                self, text=label, variable=self.p_valve_var, value=val,
+                font=ctk.CTkFont(size=12)
+            )
+            btn.pack(anchor="w", padx=28, pady=3)
+            self._project_valve_buttons.append(btn)
 
-        ctk.CTkLabel(self, text="Allarme Sportello:",
-                     font=ctk.CTkFont(size=11, weight="bold"),
-                     text_color=C_SEC_TEXT).pack(anchor="w", padx=16, pady=(10, 2))
+        self._proj_json_valves_row = _row(self)
+        lbl_proj_valves = ctk.CTkLabel(self._proj_json_valves_row, text=t('lbl_json_valves'), width=LBL_W, anchor="w")
+        lbl_proj_valves.pack(side="left")
+        self._refs['proj_lbl_json_valves'] = lbl_proj_valves
+        self.p_json_valves_var = tk.StringVar(value="1")
+        self._proj_json_valves_menu = ctk.CTkOptionMenu(
+            self._proj_json_valves_row, variable=self.p_json_valves_var, values=[str(i) for i in range(9)], width=120
+        )
+        self._proj_json_valves_menu.pack(side="left", padx=(4, 0))
+
+        _sec(self, 'sec_allarme', self._refs)
         self.p_allarme_var = tk.StringVar(value="on")
         for val, label in [("on", "ON"), ("off", "OFF")]:
             ctk.CTkRadioButton(self, text=label,
@@ -2711,17 +3027,8 @@ class ProjectTab(ctk.CTkScrollableFrame):
                                font=ctk.CTkFont(size=12)
                                ).pack(anchor="w", padx=28, pady=3)
 
-        ctk.CTkLabel(self, text="ADC:",
-                     font=ctk.CTkFont(size=11, weight="bold"),
-                     text_color=C_SEC_TEXT).pack(anchor="w", padx=16, pady=(10, 2))
-        self.p_adc_var = tk.StringVar(value="off")
-        for val, label in [("on", "ON"), ("off", "OFF")]:
-            ctk.CTkRadioButton(self, text=label,
-                               variable=self.p_adc_var, value=val,
-                               font=ctk.CTkFont(size=12)
-                               ).pack(anchor="w", padx=28, pady=3)
-
         self._frow('lbl_sendinterval', "130000", "p_sendinterval", w=140)
+        self._sync_project_json_params_from_label()
 
         # â”€â”€ BotÃ³n principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _div(self)
@@ -2761,7 +3068,14 @@ class ProjectTab(ctk.CTkScrollableFrame):
     def _refresh_lang(self):
         self._lbl_title.configure(text=t('proj_title'))
         for key, w in self._refs.items():
-            w.configure(text=t(key[5:]) if key.startswith('_sec_') else t(key))
+            if key.startswith('_sec_'):
+                text_key = key[5:]
+            elif key.startswith('proj_'):
+                text_key = key[5:]
+            else:
+                text_key = key
+            w.configure(text=t(text_key))
+        self._sync_project_json_params_from_label()
         self._update_struct()
         self._update_preview()
         self._btn_all.configure(text=t('btn_gen_all'))
@@ -2803,6 +3117,37 @@ class ProjectTab(ctk.CTkScrollableFrame):
             f"    etichette/ -> {name}.pdf"
         )
         self._struct_lbl.configure(text=txt)
+
+    def _sync_project_model_from_label(self, *_):
+        try:
+            self.p_model_var.set("297" if self.p_label_var.get() == "loracont" else "210")
+            self._sync_project_json_params_from_label()
+        except Exception:
+            pass
+
+    def _sync_project_json_params_from_label(self, *_):
+        try:
+            is_loracont = self.p_label_var.get() == "loracont"
+            if is_loracont:
+                self._proj_json_counters_menu.configure(values=["0", "1"])
+                if self.p_json_counters_var.get() not in ("0", "1"):
+                    self.p_json_counters_var.set("0")
+                self.p_json_valves_var.set("0")
+                self._refs['_sec_sec_valve'].master.pack_forget()
+                for btn in self._project_valve_buttons:
+                    btn.pack_forget()
+                self._proj_json_valves_row.pack_forget()
+            else:
+                self._proj_json_counters_menu.configure(values=[str(i) for i in range(9)])
+                if self.p_json_counters_var.get() not in [str(i) for i in range(9)]:
+                    self.p_json_counters_var.set("1")
+                before_widget = self._refs['_sec_sec_allarme'].master
+                self._refs['_sec_sec_valve'].master.pack(before=before_widget, fill="x", padx=6, pady=(14, 4))
+                for btn in self._project_valve_buttons:
+                    btn.pack(before=before_widget, anchor="w", padx=28, pady=3)
+                self._proj_json_valves_row.pack(before=before_widget, fill="x", padx=10, pady=3)
+        except Exception:
+            pass
 
     def _handle_serial_registry_changed(self):
         self.after(0, self._use_next_serial_from_github)
@@ -2847,8 +3192,11 @@ class ProjectTab(ctk.CTkScrollableFrame):
             label_opt    = self.p_label_var.get()
             valve        = self.p_valve_var.get()
             allarme      = (self.p_allarme_var.get() == "on")
-            adc_on       = (self.p_adc_var.get() == "on")
+            adc_value    = self.p_json_adc_var.get().strip() or "0"
+            counter_count = self.p_json_counters_var.get().strip() or "0"
+            valve_count  = "0" if label_opt == "loracont" else (self.p_json_valves_var.get().strip() or "0")
             sendinterval = int(self.p_sendinterval_var.get().strip())
+            project_childnumber = "0" if label_opt == "loracont" else (self.p_childnumber_var.get().strip() or "1")
 
             if not root:
                 messagebox.showerror("Error", "Selecciona una carpeta raÃ­z."); return
@@ -2858,6 +3206,8 @@ class ProjectTab(ctk.CTkScrollableFrame):
                 messagebox.showerror("Error", "La carpeta raÃ­z no existe."); return
             if end < start:
                 messagebox.showerror("Error", "'Hasta' debe ser â‰¥ 'Desde'."); return
+            if not project_childnumber.isdigit():
+                messagebox.showerror("Error", "La cantidad de valvulas / childnumber debe ser numerica."); return
             if len(deveui_s) != 16:
                 messagebox.showerror("Error", f"DevEUI debe tener 16 hex."); return
             int(deveui_s, 16)
@@ -2865,6 +3215,12 @@ class ProjectTab(ctk.CTkScrollableFrame):
                 messagebox.showerror("Error", "NewSKey debe tener 32 hex."); return
             if len(app_skey) != 32:
                 messagebox.showerror("Error", "AppSKey debe tener 32 hex."); return
+            if adc_value not in ("0", "1"):
+                messagebox.showerror("Error", "ADC debe ser 0 o 1."); return
+            if not counter_count.isdigit():
+                messagebox.showerror("Error", "La cantidad de counters debe ser numerica."); return
+            if label_opt != "loracont" and not valve_count.isdigit():
+                messagebox.showerror("Error", "La cantidad de valvulas debe ser numerica."); return
 
             num_devices = end - start + 1
             deveui_int  = int(deveui_s, 16)
@@ -2897,14 +3253,24 @@ class ProjectTab(ctk.CTkScrollableFrame):
                 devices.append({'name': nm, 'dev_eui': de, 'dev_addr': da})
                 rows.append([nm, model, FIXED_APP_EUI, de, FIXED_AUTH, "", da,
                               new_skey, app_skey, FIXED_CLASS, lat, lon, "",
-                              "", "", FIXED_GROUP, "", "", "1", "0"])
+                              "", "", FIXED_GROUP, "", "", project_childnumber, "0"])
             with open(csv_path, "w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f, delimiter=";")
                 w.writerow(hdr); w.writerows(rows)
 
             # â”€â”€ 2. JSON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             for i, dev in enumerate(devices):
-                data = _build_json(dev['dev_eui'], dev['dev_addr'], valve, allarme, sendinterval, adc_on)
+                data = _build_json(
+                    dev['dev_eui'],
+                    dev['dev_addr'],
+                    "loracont" if label_opt == "loracont" else "rtu",
+                    allarme,
+                    sendinterval,
+                    adc_value,
+                    counter_count,
+                    valve_count,
+                    valve,
+                )
                 with open(os.path.join(json_dir, f"{dev['name']}.JSON"),
                           "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=4)
@@ -2972,7 +3338,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class TICLabelTab(ctk.CTkScrollableFrame):
     def __init__(self, parent, product_name, title_key):
-        super().__init__(parent, fg_color=("white", "#1e1e2e"),
+        super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
         self._product_name = product_name
         self._title_key    = title_key
@@ -3495,7 +3861,7 @@ class GatewayTab(ctk.CTkScrollableFrame):
     X4S_LTE_SHUTDOWN_CMD = "curl -s update.resiot.io/extra/armshipmodegwsolar.sh | bash"
 
     def __init__(self, master):
-        super().__init__(master, fg_color=("white", "#1e1e2e"), corner_radius=0, border_width=0, label_text="")
+        super().__init__(master, fg_color=C_BODY_BG, corner_radius=0, border_width=0, label_text="")
         self._gateways = []
         self._refs = {}
         self._pdf_output_auto = True
@@ -3824,7 +4190,7 @@ FW_DOWNLOADS = {
         {
             "label_key": "fw_item_loracont",
             "pic": "PIC24FJ128GL302",
-            "firmwares": [("1.0.0_REV2.23.03.2026", "CONTATORE_REL.1.0.0_REV2.23.03.2026.production.INFO.hex")],
+            "firmwares": [("1.0.2_REV2.18.05.2026", "CONTATORE_REL.1.0.2_REV2.18.05.2026.production.hex")],
         },
         {
             "label_key": "fw_item_rn2483",
@@ -3889,19 +4255,24 @@ FW_DOWNLOADS = {
 
 class FWVersionTab(ctk.CTkScrollableFrame):
     PIC_BUTTON_COLORS = {
-        "fg_color": ("#E7ECF3", "#223145"),
-        "hover_color": ("#D7E0EB", "#2A3B52"),
-        "text_color": ("#102235", "#F2F6FB"),
+        "fg_color": ("#223145", "#223145"),
+        "hover_color": ("#2A3B52", "#2A3B52"),
+        "text_color": ("#F2F6FB", "#F2F6FB"),
     }
     PIC_BUTTON_ACTIVE_COLORS = {
         "fg_color": ("#1F8F5F", "#1F8F5F"),
         "hover_color": ("#18724C", "#18724C"),
         "text_color": ("#FFFFFF", "#FFFFFF"),
     }
+    FIRMWARE_BUTTON_COLORS = {
+        "fg_color": ("#89AEDD", "#89AEDD"),
+        "hover_color": ("#739DD3", "#739DD3"),
+        "text_color": ("#FFFFFF", "#FFFFFF"),
+    }
 
     def __init__(self, master):
         super().__init__(master, fg_color=("white", "#1e1e2e"), corner_radius=0, border_width=0, label_text="")
-        self._pic_buttons = {}
+        self._pic_buttons = []
         self._title_lbl = None
         self._desc_lbl = None
         self._status_lbl = None
@@ -3943,15 +4314,16 @@ class FWVersionTab(ctk.CTkScrollableFrame):
             self._status_lbl.configure(text=t("fw_status_ready"))
 
     def _reset_pic_buttons(self):
-        for button in self._pic_buttons.values():
+        for _, button in self._pic_buttons:
             button.configure(**self.PIC_BUTTON_COLORS)
 
     def _copy_pic(self, pic_name):
         self.clipboard_clear()
         self.clipboard_append(pic_name)
         self._reset_pic_buttons()
-        button = self._pic_buttons.get(pic_name)
-        if button is not None:
+        for current_pic, button in self._pic_buttons:
+            if current_pic != pic_name:
+                continue
             button.configure(**self.PIC_BUTTON_ACTIVE_COLORS)
         self._status_lbl.configure(text=t("fw_status_pic_copied").format(value=pic_name))
 
@@ -4014,17 +4386,21 @@ class FWVersionTab(ctk.CTkScrollableFrame):
                 font=ctk.CTkFont(size=12, weight="bold"),
                 **self.PIC_BUTTON_COLORS,
             )
+            pic_button._dm_style_locked = True
             pic_button.pack(side="right", padx=(8, 0))
-            self._pic_buttons[item["pic"]] = pic_button
+            self._pic_buttons.append((item["pic"], pic_button))
 
             for fw_label, fw_file in reversed(item["firmwares"]):
-                ctk.CTkButton(
+                fw_button = ctk.CTkButton(
                     row_frame,
                     text=fw_label,
                     width=150,
                     command=lambda f=fw_file: self._save_firmware(f),
                     font=ctk.CTkFont(size=11, weight="bold"),
-                ).pack(side="right", padx=(8, 0))
+                    **self.FIRMWARE_BUTTON_COLORS,
+                )
+                fw_button._dm_style_locked = True
+                fw_button.pack(side="right", padx=(8, 0))
 
             if not item["firmwares"]:
                 no_hex_label = ctk.CTkLabel(
@@ -4045,7 +4421,7 @@ class SerialTab(ctk.CTkScrollableFrame):
     TERMINAL_ANTONIO_FILE = "APP_BLE_SERIAL__25_01_2026_wx.zip"
 
     def __init__(self, master):
-        super().__init__(master, fg_color=("white", "#1e1e2e"), corner_radius=0, border_width=0, label_text="")
+        super().__init__(master, fg_color=C_BODY_BG, corner_radius=0, border_width=0, label_text="")
         self._serial_settings = _load_serial_settings()
         self._title_lbl = None
         self._desc_lbl = None
@@ -4095,7 +4471,7 @@ class SerialTab(ctk.CTkScrollableFrame):
         )
         self._section_lbl.pack(side="left", padx=12)
 
-        card = ctk.CTkFrame(self, corner_radius=10, fg_color=("white", "#16202d"))
+        card = ctk.CTkFrame(self, corner_radius=16, fg_color=C_CARD_BG, border_width=1, border_color=C_CARD_BORDER)
         card.pack(fill="x", padx=18, pady=(0, 10))
 
         self._tool_title_lbl = ctk.CTkLabel(
@@ -4172,7 +4548,7 @@ class SerialTab(ctk.CTkScrollableFrame):
         )
         self._repo_desc_lbl.pack(anchor="w", padx=18, pady=(0, 8))
 
-        family_card = ctk.CTkFrame(self, corner_radius=10, fg_color=("white", "#16202d"))
+        family_card = ctk.CTkFrame(self, corner_radius=16, fg_color=C_CARD_BG, border_width=1, border_color=C_CARD_BORDER)
         family_card.pack(fill="x", padx=18, pady=(10, 8))
         self._family_save_buttons = {}
         for idx, family in enumerate(SERIAL_FAMILY_ORDER):
@@ -4376,10 +4752,152 @@ class SerialTab(ctk.CTkScrollableFrame):
         self._status_lbl.configure(text=t("serial_status"))
 
 
+class ManualsTab(ctk.CTkScrollableFrame):
+    MANUAL_GROUPS = [
+        (
+            "manuals_group_itic",
+            [
+                os.path.join("Manuali", "ITIC", "I-TIC1 manuale utente rev.0.3 ITA.pdf"),
+                os.path.join("Manuali", "ITIC", "I-TIC1 user manual rev.0.3 ENG.pdf"),
+            ],
+        ),
+        (
+            "manuals_group_hydronet",
+            [
+                os.path.join("Manuali", "Piattaforma Hydronet", "Manuale_Hydronet_Generico.pdf"),
+            ],
+        ),
+        (
+            "manuals_group_tic12",
+            [
+                os.path.join("Manuali", "TIC12", "Centralina Controlavaggio TIC12 - Istruzioni operative e connessioni - rev 0.3b ITA-ENG tuv-nord.pdf"),
+            ],
+        ),
+    ]
+
+    def __init__(self, master):
+        super().__init__(master, fg_color=C_BODY_BG, corner_radius=0, border_width=0, label_text="")
+        self._title_lbl = None
+        self._desc_lbl = None
+        self._section_lbl = None
+        self._group_labels = {}
+        self._item_labels = []
+        self._save_buttons = []
+        self._status_lbl = None
+        self._build()
+        _lang_cbs.append(self._refresh_lang)
+
+    def _build(self):
+        self._title_lbl = ctk.CTkLabel(self, text=t("manuals_title"), font=ctk.CTkFont(size=18, weight="bold"))
+        self._title_lbl.pack(pady=(12, 6))
+
+        self._desc_lbl = ctk.CTkLabel(
+            self,
+            text=t("manuals_desc"),
+            text_color=C_HINT,
+            justify="left",
+            wraplength=900,
+        )
+        self._desc_lbl.pack(anchor="w", padx=18, pady=(0, 10))
+
+        bar = ctk.CTkFrame(self, fg_color=C_SEC_BG, corner_radius=6, height=30)
+        bar.pack(fill="x", padx=18, pady=(8, 4))
+        bar.pack_propagate(False)
+        self._section_lbl = ctk.CTkLabel(
+            bar,
+            text=t("manuals_section_library"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=C_SEC_TEXT,
+        )
+        self._section_lbl.pack(side="left", padx=12)
+
+        card = ctk.CTkFrame(self, corner_radius=16, fg_color=C_CARD_BG, border_width=1, border_color=C_CARD_BORDER)
+        card.pack(fill="x", padx=18, pady=(0, 10))
+
+        for group_key, files in self.MANUAL_GROUPS:
+            group_frame = ctk.CTkFrame(card, fg_color=C_SEC_BG, corner_radius=14, border_width=1, border_color=C_CARD_BORDER)
+            group_frame.pack(fill="x", padx=14, pady=10)
+
+            title = ctk.CTkLabel(
+                group_frame,
+                text=t(group_key),
+                font=ctk.CTkFont(size=14, weight="bold"),
+                text_color=C_TEXT,
+            )
+            title.pack(anchor="w", padx=14, pady=(12, 6))
+            self._group_labels[group_key] = title
+
+            for relpath in files:
+                row = ctk.CTkFrame(group_frame, fg_color="transparent")
+                row.pack(fill="x", padx=14, pady=(0, 10))
+                filename = os.path.basename(relpath)
+                item = ctk.CTkLabel(
+                    row,
+                    text=filename,
+                    text_color=C_TEXT,
+                    anchor="w",
+                    justify="left",
+                    wraplength=680,
+                )
+                item.pack(side="left", fill="x", expand=True)
+                self._item_labels.append(item)
+                btn = ctk.CTkButton(
+                    row,
+                    text=t("manuals_button_save"),
+                    width=120,
+                    command=lambda p=relpath: self._save_manual(p),
+                    font=ctk.CTkFont(size=12, weight="bold"),
+                )
+                btn.pack(side="right", padx=(12, 0))
+                self._save_buttons.append(btn)
+
+        self._status_lbl = ctk.CTkLabel(card, text="", text_color=C_HINT, anchor="w")
+        self._status_lbl.pack(fill="x", padx=16, pady=(0, 14))
+
+    def _save_manual(self, relative_path):
+        source = _resource(relative_path)
+        if not os.path.isfile(source):
+            source = os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
+        filename = os.path.basename(relative_path)
+        if not os.path.isfile(source):
+            messagebox.showerror(t("serial_error_title"), t("manuals_missing").format(name=filename), parent=self)
+            return
+
+        target = filedialog.asksaveasfilename(
+            title=t("manuals_save_title"),
+            initialfile=filename,
+            defaultextension=".pdf",
+            filetypes=[("PDF", "*.pdf"), ("All files", "*.*")],
+        )
+        if not target:
+            return
+
+        shutil.copyfile(source, target)
+        self._status_lbl.configure(text=t("manuals_saved").format(name=os.path.basename(target)))
+        messagebox.showinfo(t("manuals_title"), t("manuals_saved").format(name=os.path.basename(target)), parent=self)
+
+    def _refresh_lang(self):
+        self._title_lbl.configure(text=t("manuals_title"))
+        self._desc_lbl.configure(text=t("manuals_desc"))
+        self._section_lbl.configure(text=t("manuals_section_library"))
+        for group_key, widget in self._group_labels.items():
+            widget.configure(text=t(group_key))
+        for button in self._save_buttons:
+            button.configure(text=t("manuals_button_save"))
+
+
 class App:
     def __init__(self, root: ctk.CTk):
         self.root = root
         root.title("Device Manager - TECNIDRO")
+        root.configure(fg_color=C_APP_BG)
+        self._window_icon = None
+        try:
+            icon_path = _resource("tecnidro_app_icon.png")
+            self._window_icon = tk.PhotoImage(file=icon_path)
+            root.iconphoto(True, self._window_icon)
+        except Exception:
+            pass
         # Centrar en pantalla al 90% del monitor disponible (mÃ¡x 1200Ã—960)
         root.update_idletasks()
         sw = root.winfo_screenwidth()
@@ -4391,74 +4909,233 @@ class App:
         root.geometry(f"{w}x{h}+{x}+{y}")
         root.minsize(820, 640)
 
-        # â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        hdr = ctk.CTkFrame(root, corner_radius=0, height=60, fg_color=C_HDR_BG)
-        hdr.pack(fill="x")
-        hdr.pack_propagate(False)
-        ctk.CTkLabel(hdr, text="  Device Manager",
-                     font=ctk.CTkFont(size=16, weight="bold"),
-                     text_color=C_HDR_TEXT).pack(side="left", padx=16, pady=12)
-        ctk.CTkLabel(hdr, text="TECNIDRO SRL",
-                     font=ctk.CTkFont(size=11),
-                     text_color=C_HINT).pack(side="left")
+        self._nav_buttons = {}
+        self._views = {}
+        self._rtu_views = {}
+        self._active_section = None
+        self._active_rtu_section = "Proyecto"
+        self._section_meta = {
+            "RTU": ("RTU Workspace", "CSV, JSON, progetto completo ed etichette in un unico flusso."),
+            "GW": ("Gateway", "Gestione etichette Gateway e strumenti rapidi per X4S LTE."),
+            "I-TIC": ("I-TIC", "Etichette e seriali per dispositivi I-TIC."),
+            "TIC12": ("TIC12", "Etichette, seriali e stampa per TIC12."),
+            "FW Version": ("FW Version", "Libreria firmware con copia PIC ed export HEX."),
+            "Serial": ("Serial Registry", "Controllo centralizzato dei seriali via GitHub."),
+            "Manuales": ("header_manuals_title", "header_manuals_subtitle"),
+            "Language": ("header_language_title", "header_language_subtitle"),
+        }
+        self._nav_text_keys = {
+            "Manuales": "nav_manuals",
+            "Language": "nav_language",
+        }
 
-        # Logo â€” CTkImage cambia automÃ¡ticamente entre light y dark
-        img_l, img_d, dw, dh = _make_logo_images(display_h=52)
+        shell = ctk.CTkFrame(root, fg_color="transparent")
+        shell.pack(fill="both", expand=True, padx=14, pady=14)
+
+        workspace = ctk.CTkFrame(shell, fg_color=C_SHELL_BG, corner_radius=28, border_width=1, border_color=C_CARD_BORDER)
+        workspace.pack(fill="both", expand=True)
+
+        sidebar = ctk.CTkFrame(workspace, fg_color=("#dde5ef", "#111823"), corner_radius=24, width=240)
+        sidebar.pack(side="left", fill="y", padx=(14, 10), pady=14)
+        sidebar.pack_propagate(False)
+
+        brand = ctk.CTkFrame(sidebar, fg_color="transparent")
+        brand.pack(fill="x", padx=18, pady=(18, 18))
+        img_l, img_d, dw, dh = _make_logo_images(display_h=40)
         if img_l and img_d:
-            logo_ctk = ctk.CTkImage(light_image=img_l, dark_image=img_d,
-                                    size=(dw, dh))
-            ctk.CTkLabel(hdr, image=logo_ctk, text="",
-                         fg_color="transparent").pack(side="right", padx=18)
+            logo_ctk = ctk.CTkImage(light_image=img_l, dark_image=img_d, size=(dw, dh))
+            self._logo_ctk = logo_ctk
+            ctk.CTkLabel(brand, image=logo_ctk, text="", fg_color="transparent").pack(anchor="w")
+        ctk.CTkLabel(
+            brand,
+            text="Device Manager",
+            font=ctk.CTkFont(size=24, weight="bold"),
+            text_color=C_TEXT,
+        ).pack(anchor="w", pady=(12, 0))
+        ctk.CTkLabel(
+            brand,
+            text="TECNIDRO SRL",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=C_MUTED,
+        ).pack(anchor="w", pady=(2, 0))
 
-        # â”€â”€ Tabview  (nombres FIJOS â€” no se renombran) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        # Los tabs tienen nombres neutros cortos; el contenido se traduce.
-        self.tabview = ctk.CTkTabview(root, corner_radius=8, border_width=0)
-        self.tabview.pack(fill="both", expand=True, padx=10, pady=(6, 4))
+        nav_wrap = ctk.CTkFrame(sidebar, fg_color="transparent")
+        nav_wrap.pack(fill="x", padx=14, pady=(4, 10))
+        for name in ("RTU", "GW", "I-TIC", "TIC12", "FW Version", "Serial", "Manuales", "Language"):
+            btn = ctk.CTkButton(
+                nav_wrap,
+                text=name,
+                anchor="w",
+                height=44,
+                corner_radius=14,
+                fg_color="transparent",
+                hover_color=C_ACCENT_SOFT,
+                text_color=C_TEXT,
+                font=ctk.CTkFont(size=13, weight="bold"),
+                command=lambda n=name: self._show_section(n),
+            )
+            btn.pack(fill="x", pady=4)
+            self._nav_buttons[name] = btn
 
-        # Pestañas principales: RTU | GW | I-TIC | TIC12 | FW Version | Language
-        T_RTU   = "RTU"
-        T_GW    = "GW"
-        T_ITIC  = "I-TIC"
-        T_TIC12 = "TIC12"
-        T_FW    = "FW Version"
-        T_SERIAL = "Serial"
-        T_LANG  = "Language"
+        side_footer = ctk.CTkFrame(sidebar, fg_color="transparent")
+        side_footer.pack(side="bottom", fill="x", padx=18, pady=18)
+        badge = ctk.CTkFrame(side_footer, fg_color=C_ACCENT_SOFT, corner_radius=14)
+        badge.pack(anchor="w")
+        ctk.CTkLabel(
+            badge,
+            text=f"Versione {APP_VERSION}",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=C_SEC_TEXT,
+        ).pack(padx=12, pady=8)
 
-        for name in (T_RTU, T_GW, T_ITIC, T_TIC12, T_FW, T_SERIAL, T_LANG):
-            self.tabview.add(name)
+        main_area = ctk.CTkFrame(workspace, fg_color="transparent")
+        main_area.pack(side="left", fill="both", expand=True, padx=(0, 14), pady=14)
 
-        # GW, I-TIC, TIC12 y FW Version directamente en la barra principal
-        GatewayTab(self.tabview.tab(T_GW)).pack(fill="both", expand=True)
-        TICLabelTab(self.tabview.tab(T_ITIC),  product_name="I-TIC 1V", title_key="itic_title").pack(fill="both", expand=True)
-        TICLabelTab(self.tabview.tab(T_TIC12), product_name="TIC12",    title_key="tic12_title").pack(fill="both", expand=True)
-        FWVersionTab(self.tabview.tab(T_FW)).pack(fill="both", expand=True)
-        SerialTab(self.tabview.tab(T_SERIAL)).pack(fill="both", expand=True)
-        LangTab(self.tabview.tab(T_LANG)).pack(fill="both", expand=True)
+        topbar = ctk.CTkFrame(main_area, fg_color=C_HDR_BG, corner_radius=22, height=92, border_width=1, border_color=C_CARD_BORDER)
+        topbar.pack(fill="x", pady=(0, 12))
+        topbar.pack_propagate(False)
 
-        # â”€â”€ Sub-tabview dentro de RTU: CSV | Etiquetas | JSON | Proyecto â”€â”€
-        rtu_sub = ctk.CTkTabview(self.tabview.tab(T_RTU),
-                                  corner_radius=6, border_width=0)
-        rtu_sub.pack(fill="both", expand=True, padx=4, pady=4)
+        title_box = ctk.CTkFrame(topbar, fg_color="transparent")
+        title_box.pack(side="left", fill="both", expand=True, padx=24, pady=18)
+        self._header_title = ctk.CTkLabel(
+            title_box,
+            text="",
+            font=ctk.CTkFont(size=28, weight="bold"),
+            text_color=C_HDR_TEXT,
+        )
+        self._header_title.pack(anchor="w")
+        self._header_subtitle = ctk.CTkLabel(
+            title_box,
+            text="",
+            font=ctk.CTkFont(size=12),
+            text_color=C_HINT,
+        )
+        self._header_subtitle.pack(anchor="w", pady=(4, 0))
+
+        self._rtu_segment_var = tk.StringVar(value="Proyecto")
+        self._rtu_segment = ctk.CTkSegmentedButton(
+            topbar,
+            values=["Proyecto", "CSV", "JSON", "Etichette"],
+            variable=self._rtu_segment_var,
+            command=self._show_rtu_section,
+            fg_color=C_TAB_BG,
+            selected_color=C_ACCENT,
+            selected_hover_color=C_ACCENT_HOVER,
+            unselected_color=C_TAB_BG,
+            unselected_hover_color=C_ACCENT_SOFT,
+            text_color=C_TAB_TEXT,
+            corner_radius=14,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            height=36,
+        )
+
+        content_host = ctk.CTkFrame(main_area, fg_color=C_CARD_BG, corner_radius=24, border_width=1, border_color=C_CARD_BORDER)
+        content_host.pack(fill="both", expand=True)
+
+        for section in ("RTU", "GW", "I-TIC", "TIC12", "FW Version", "Serial", "Manuales", "Language"):
+            frame = ctk.CTkFrame(content_host, fg_color="transparent")
+            self._views[section] = frame
+
+        # RTU workspace with subnavigation
+        rtu_shell = self._views["RTU"]
+        self._rtu_content_host = ctk.CTkFrame(rtu_shell, fg_color="transparent")
+        self._rtu_content_host.pack(fill="both", expand=True)
         for sub in ("Proyecto", "CSV", "JSON", "Etichette"):
-            rtu_sub.add(sub)
-        ProjectTab(rtu_sub.tab("Proyecto")).pack(fill="both", expand=True)
-        CSVTab(rtu_sub.tab("CSV")).pack(fill="both", expand=True)
-        JSONTab(rtu_sub.tab("JSON")).pack(fill="both", expand=True)
-        EtichetteTab(rtu_sub.tab("Etichette")).pack(fill="both", expand=True)
+            subframe = ctk.CTkFrame(self._rtu_content_host, fg_color="transparent")
+            self._rtu_views[sub] = subframe
+        ProjectTab(self._rtu_views["Proyecto"]).pack(fill="both", expand=True)
+        CSVTab(self._rtu_views["CSV"]).pack(fill="both", expand=True)
+        JSONTab(self._rtu_views["JSON"]).pack(fill="both", expand=True)
+        EtichetteTab(self._rtu_views["Etichette"]).pack(fill="both", expand=True)
 
-        # â”€â”€ Status bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        bar = ctk.CTkFrame(root, corner_radius=0, height=24, fg_color=C_BAR_BG)
-        bar.pack(fill="x", side="bottom")
-        bar.pack_propagate(False)
-        ctk.CTkLabel(bar, text=f"  Generador CSV & Etichette PDF - v{APP_VERSION}",
-                     font=ctk.CTkFont(size=10),
-                     text_color=C_BAR_TEXT).pack(side="left", padx=8)
-        ctk.CTkLabel(bar, text="by Manuel Rodriguez  ",
-                     font=ctk.CTkFont(size=10),
-                     text_color=C_BAR_TEXT).pack(side="right")
+        GatewayTab(self._views["GW"]).pack(fill="both", expand=True)
+        TICLabelTab(self._views["I-TIC"], product_name="I-TIC 1V", title_key="itic_title").pack(fill="both", expand=True)
+        TICLabelTab(self._views["TIC12"], product_name="TIC12", title_key="tic12_title").pack(fill="both", expand=True)
+        FWVersionTab(self._views["FW Version"]).pack(fill="both", expand=True)
+        SerialTab(self._views["Serial"]).pack(fill="both", expand=True)
+        ManualsTab(self._views["Manuales"]).pack(fill="both", expand=True)
+        LangTab(self._views["Language"]).pack(fill="both", expand=True)
+
+        self._status_bar = ctk.CTkFrame(main_area, corner_radius=18, height=34, fg_color=C_BAR_BG, border_width=1, border_color=C_CARD_BORDER)
+        self._status_bar.pack(fill="x", pady=(12, 0))
+        self._status_bar.pack_propagate(False)
+        ctk.CTkLabel(
+            self._status_bar,
+            text=f"  Device Manager · Tecnidro · v{APP_VERSION}",
+            font=ctk.CTkFont(size=10),
+            text_color=C_BAR_TEXT,
+        ).pack(side="left", padx=8)
+        ctk.CTkLabel(
+            self._status_bar,
+            text="by Manuel Rodriguez  ",
+            font=ctk.CTkFont(size=10),
+            text_color=C_BAR_TEXT,
+        ).pack(side="right", padx=8)
+
+        _apply_premium_theme(main_area)
+        _lang_cbs.append(self._refresh_lang)
+        self._refresh_lang()
+        self._show_section("RTU")
 
         if _load_update_settings().get("auto_check") and str(_load_update_settings().get("manifest_url", "")).strip():
             root.after(1500, lambda: check_for_updates(root, interactive=False))
+
+    def _show_section(self, section_name):
+        if section_name not in self._views:
+            return
+        for name, frame in self._views.items():
+            frame.pack_forget()
+            btn = self._nav_buttons.get(name)
+            if btn is not None:
+                btn.configure(
+                    fg_color="transparent",
+                    hover_color=C_ACCENT_SOFT,
+                    text_color=C_TEXT,
+                )
+        self._views[section_name].pack(fill="both", expand=True, padx=14, pady=14)
+        selected_btn = self._nav_buttons.get(section_name)
+        if selected_btn is not None:
+            selected_btn.configure(
+                fg_color=C_ACCENT,
+                hover_color=C_ACCENT_HOVER,
+                text_color=("white", "#f7fbff"),
+            )
+        self._active_section = section_name
+        title, subtitle = self._section_header(section_name)
+        self._header_title.configure(text=title)
+        self._header_subtitle.configure(text=subtitle)
+        if section_name == "RTU":
+            self._rtu_segment.pack(side="right", padx=22, pady=26)
+            self._show_rtu_section(self._active_rtu_section)
+        else:
+            self._rtu_segment.pack_forget()
+
+    def _show_rtu_section(self, section_name):
+        self._active_rtu_section = section_name
+        if self._active_section != "RTU":
+            return
+        for name, frame in self._rtu_views.items():
+            frame.pack_forget()
+        frame = self._rtu_views.get(section_name)
+        if frame is not None:
+            frame.pack(fill="both", expand=True)
+        self._rtu_segment_var.set(section_name)
+
+    def _section_header(self, section_name):
+        title, subtitle = self._section_meta.get(section_name, (section_name, ""))
+        if title in TRANSLATIONS[_cur_lang[0]]:
+            title = t(title)
+        if subtitle in TRANSLATIONS[_cur_lang[0]]:
+            subtitle = t(subtitle)
+        return title, subtitle
+
+    def _refresh_lang(self):
+        for name, btn in self._nav_buttons.items():
+            btn.configure(text=t(self._nav_text_keys.get(name, name)))
+        if self._active_section:
+            title, subtitle = self._section_header(self._active_section)
+            self._header_title.configure(text=title)
+            self._header_subtitle.configure(text=subtitle)
 
 
 def main():
