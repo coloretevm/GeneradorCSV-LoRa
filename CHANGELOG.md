@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## 1.114
+
+- Aggiunto nella sezione I-TIC il promemoria di collegamento del solenoide bistabile 12v DC con Cavo Rosso - V1_C e Cavo Nero - V1_O.
+- Allineati nel repository i contenuti fw e manuali usati per la build distribuita.
+- Nuova build ufficiale pubblicata come Device_Manager_v114.exe.
+
 ## 1.109
 
 - Corretta la scheda `FW Version`: i pulsanti PIC della colonna destra tornano blu scuro per default e diventano verdi solo quando vengono cliccati.
@@ -113,4 +119,5 @@
 - RTU LORACONT: eliminada una fila de etiquetas por pagina y rejilla centrada en A4.
 - RTU LORACONT: logo corregido para imprimirse en negro.
 - RTU en tubo: eliminada una fila de etiquetas por pagina y rejilla centrada en A4.
+
 

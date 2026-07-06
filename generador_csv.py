@@ -18,8 +18,8 @@ from PIL import Image
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.109"
-APP_BUILD_NAME = "Device_Manager_v109"
+APP_VERSION = "1.114"
+APP_BUILD_NAME = "Device_Manager_v114"
 SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
@@ -601,6 +601,9 @@ TRANSLATIONS = {
         'btn_gen_json':  'Generar archivos JSON',
         'tic12_title':  'Generador de Etiquetas TIC12',
         'itic_title':   'Generador de Etiquetas I-TIC',
+        'itic_solenoid_title': 'Conexion solenoide biestable 12v DC.',
+        'itic_solenoid_red': 'Cable rojo   - V1_C',
+        'itic_solenoid_black': 'Cable negro  - V1_O',
         'sec_tic_dev':  'Dispositivos',
         'lbl_tic_from': 'Desde (nÃºmero):',
         'lbl_tic_to':   'Hasta (nÃºmero):',
@@ -738,6 +741,7 @@ TRANSLATIONS = {
         'manuals_desc': 'Zona dedicada a manuales, guias y documentacion tecnica del programa y de los dispositivos.',
         'manuals_section_library': 'Biblioteca manuales',
         'manuals_group_itic': 'I-TIC',
+        'manuals_group_loracont': 'LoraCont',
         'manuals_group_hydronet': 'Piattaforma Hydronet',
         'manuals_group_tic12': 'TIC12',
         'manuals_button_save': 'Guardar PDF',
@@ -943,10 +947,24 @@ TRANSLATIONS = {
         'serial_family_gw': 'GW',
         'serial_family_itic': 'I-TIC',
         'serial_family_tic12': 'TIC12',
+        'tic12_title':  'TIC12 Label Generator',
+        'itic_title':   'I-TIC Label Generator',
+        'itic_solenoid_title': '12v DC bistable solenoid wiring.',
+        'itic_solenoid_red': 'Red wire    - V1_C',
+        'itic_solenoid_black': 'Black wire  - V1_O',
+        'sec_tic_dev':  'Devices',
+        'lbl_tic_from': 'From (number):',
+        'lbl_tic_to':   'To (number):',
+        'lbl_tic_yr':   'Year:',
+        'lbl_tic_fw':   'FW version:',
+        'sec_tic_out':  'Output file',
+        'lbl_tic_pdf':  'Output PDF:',
+        'btn_tic_gen':  'Generate PDF',
         'manuals_title': 'Manuals',
         'manuals_desc': 'Area dedicated to manuals, guides, and technical documentation for the app and devices.',
         'manuals_section_library': 'Manual library',
         'manuals_group_itic': 'I-TIC',
+        'manuals_group_loracont': 'LoraCont',
         'manuals_group_hydronet': 'Hydronet Platform',
         'manuals_group_tic12': 'TIC12',
         'manuals_button_save': 'Save PDF',
@@ -1048,6 +1066,9 @@ TRANSLATIONS = {
         'btn_gen_json':  'Genera file JSON',
         'tic12_title':  'Generatore Etichette TIC12',
         'itic_title':   'Generatore Etichette I-TIC',
+        'itic_solenoid_title': 'Collegamento Solenoide Bistabile 12v DC.',
+        'itic_solenoid_red': 'Cavo Rosso   - V1_C',
+        'itic_solenoid_black': 'Cavo Nero    - V1_O',
         'sec_tic_dev':  'Dispositivi',
         'lbl_tic_from': 'Da (numero):',
         'lbl_tic_to':   'A (numero):',
@@ -1185,6 +1206,7 @@ TRANSLATIONS = {
         'manuals_desc': 'Area dedicata a manuali, guide e documentazione tecnica del programma e dei dispositivi.',
         'manuals_section_library': 'Libreria manuali',
         'manuals_group_itic': 'I-TIC',
+        'manuals_group_loracont': 'LoraCont',
         'manuals_group_hydronet': 'Piattaforma Hydronet',
         'manuals_group_tic12': 'TIC12',
         'manuals_button_save': 'Salva PDF',
@@ -3357,6 +3379,38 @@ class TICLabelTab(ctk.CTkScrollableFrame):
                                         font=ctk.CTkFont(size=15, weight="bold"))
         self._lbl_title.pack(pady=(12, 6))
 
+        if self._family == "I-TIC":
+            info_card = ctk.CTkFrame(
+                self,
+                fg_color=C_CARD_BG,
+                corner_radius=16,
+                border_width=1,
+                border_color=C_CARD_BORDER,
+            )
+            info_card.pack(fill="x", padx=18, pady=(0, 10))
+
+            self._refs["itic_solenoid_title"] = ctk.CTkLabel(
+                info_card,
+                text=t("itic_solenoid_title"),
+                font=ctk.CTkFont(size=13, weight="bold"),
+                anchor="w",
+            )
+            self._refs["itic_solenoid_title"].pack(anchor="w", padx=16, pady=(12, 4))
+
+            self._refs["itic_solenoid_red"] = ctk.CTkLabel(
+                info_card,
+                text=t("itic_solenoid_red"),
+                anchor="w",
+            )
+            self._refs["itic_solenoid_red"].pack(anchor="w", padx=16, pady=(0, 2))
+
+            self._refs["itic_solenoid_black"] = ctk.CTkLabel(
+                info_card,
+                text=t("itic_solenoid_black"),
+                anchor="w",
+            )
+            self._refs["itic_solenoid_black"].pack(anchor="w", padx=16, pady=(0, 12))
+
         _sec(self, 'sec_tic_dev', self._refs)
         self._frow('lbl_tic_from', '0001',     'tic_from', w=100)
         self._frow('lbl_tic_to',   '1000',     'tic_to',   w=100)
@@ -4190,7 +4244,7 @@ FW_DOWNLOADS = {
         {
             "label_key": "fw_item_loracont",
             "pic": "PIC24FJ128GL302",
-            "firmwares": [("1.0.2_REV2.18.05.2026", "CONTATORE_REL.1.0.2_REV2.18.05.2026.production.hex")],
+            "firmwares": [("1.0.5_REV2.15.06.2026", "CONTATORE_REL.1.0.5_REV2.15.06.2026.production.INFO.hex")],
         },
         {
             "label_key": "fw_item_rn2483",
@@ -4762,6 +4816,13 @@ class ManualsTab(ctk.CTkScrollableFrame):
             ],
         ),
         (
+            "manuals_group_loracont",
+            [
+                os.path.join("Manuali", "LoraCont", "Guida_collegamento_RTU_LoraCont_1C.pdf"),
+                os.path.join("Manuali", "LoraCont", "Guia_conexion_RTU_LoraCont_1C_ES.pdf"),
+            ],
+        ),
+        (
             "manuals_group_hydronet",
             [
                 os.path.join("Manuali", "Piattaforma Hydronet", "Manuale_Hydronet_Generico.pdf"),
@@ -4770,7 +4831,7 @@ class ManualsTab(ctk.CTkScrollableFrame):
         (
             "manuals_group_tic12",
             [
-                os.path.join("Manuali", "TIC12", "Centralina Controlavaggio TIC12 - Istruzioni operative e connessioni - rev 0.3b ITA-ENG tuv-nord.pdf"),
+                os.path.join("Manuali", "TIC12", "Centralina Controlavaggio TIC12 - Istruzioni operative e connessioni - rev 0.3c ITA-ENG tuv-nord.pdf"),
             ],
         ),
     ]
