@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "updated_at": "2026-07-30T12:54:19Z",
+  "updated_at": "2026-08-12T09:56:59Z",
   "families": {
     "RTU": {
-      "last_serial": 7984,
-      "updated_at": "2026-07-21T12:03:20Z",
-      "updated_by": "DESKTOP-LORIS",
-      "last_count": 1,
-      "last_range": "07984-07984",
+      "last_serial": 7988,
+      "updated_at": "2026-08-12T09:56:59Z",
+      "updated_by": "PC-MANUEL",
+      "last_count": 0,
+      "last_range": "07988-07988",
       "last_year": "2026"
     },
     "GW": {
