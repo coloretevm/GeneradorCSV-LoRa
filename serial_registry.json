@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-08-31T14:35:32Z",
+  "updated_at": "2026-09-03T11:40:25Z",
   "families": {
     "RTU": {
       "last_serial": 7989,
@@ -19,11 +19,11 @@
       "last_year": "2026"
     },
     "I-TIC": {
-      "last_serial": 237,
-      "updated_at": "2026-06-03T13:57:53Z",
-      "updated_by": "PC-MANUEL",
-      "last_count": 45,
-      "last_range": "0193-0237",
+      "last_serial": 327,
+      "updated_at": "2026-09-03T11:40:25Z",
+      "updated_by": "DESKTOP-LORIS",
+      "last_count": 90,
+      "last_range": "0238-0327",
       "last_year": "2026"
     },
     "TIC12": {
