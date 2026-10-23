@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "updated_at": "2026-10-21T09:12:31Z",
+  "updated_at": "2026-10-23T13:19:53Z",
   "families": {
     "RTU": {
-      "last_serial": 7990,
-      "updated_at": "2026-10-19T11:40:04Z",
+      "last_serial": 7995,
+      "updated_at": "2026-10-23T13:19:53Z",
       "updated_by": "DESKTOP-LORIS",
-      "last_count": 1,
-      "last_range": "07990-07990",
+      "last_count": 5,
+      "last_range": "07991-07995",
       "last_year": "2026"
     },
     "GW": {
