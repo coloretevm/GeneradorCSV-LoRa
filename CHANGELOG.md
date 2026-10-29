@@ -1,5 +1,16 @@
 ﻿# Changelog
 
+## 1.125 - 29/10/2026
+
+- Controllo aggiornamenti GitHub in background, senza bloccare la finestra.
+- Dopo la conferma, download del nuovo exe nella stessa cartella con indicatore di avanzamento.
+- Verifica dimensione, checksum SHA-256 quando presente nel manifest e formato del file Windows prima dell'installazione.
+- Avvio automatico del nuovo programma ed eliminazione del vecchio exe solo dopo la conferma di avvio della nuova versione. In caso di errore, il vecchio exe viene conservato.
+- Corretta la lettura dei manifest JSON con codifica UTF-8 BOM.
+- Inclusi i contenuti delle versioni locali precedenti: ValveStatus e Motor Duration in JSON/Progetto, indirizzo RTU disponibile, Terminal Antonio del 22/06/2026, firmware LoraCont 1.0.6 INFO e TRACE, nuovo manuale TIC12 e sei firmware RST per Instantaneo Nuovo (10/100/1000 L e 10/100/1000 Gal AF Med).
+- Pubblicati il codice Python aggiornato, il modulo di aggiornamento e i test. I file di credenziali esterni restano esclusi dai sorgenti.
+- Nuovo eseguibile: Device_Manager_v125.exe.
+
 ## 1.114
 
 - Aggiunto nella sezione I-TIC il promemoria di collegamento del solenoide bistabile 12v DC con Cavo Rosso - V1_C e Cavo Nero - V1_O.

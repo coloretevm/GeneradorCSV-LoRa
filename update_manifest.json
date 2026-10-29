@@ -1,5 +1,7 @@
-﻿{
-    "version":  "1.114",
-    "url":  "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v114.exe",
-    "notes":  "Device Manager v1.114 aggiunge nella sezione I-TIC il promemoria di collegamento del solenoide bistabile 12v DC (Cavo Rosso V1_C, Cavo Nero V1_O) e pubblica la nuova build ufficiale con firmware e manuali aggiornati."
+{
+  "version": "1.125",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v125.exe",
+  "sha256": "ed377561fbb6415dc2d1f4a92e75d1bbc796240132735deaba88b0338db9a987",
+  "size": 69590245,
+  "notes": "Aggiornamenti in background, download verificato, avvio automatico della nuova versione ed eliminazione del vecchio exe dopo la conferma di avvio. Corretto il manifest UTF-8 BOM. Include firmware e manuali della v124."
 }

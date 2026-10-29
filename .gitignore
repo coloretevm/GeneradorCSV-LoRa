@@ -8,3 +8,9 @@ build_pyinstaller_v48/
 dist/
 *.spec
 downloads/update_settings.json
+serial_token.txt
+token.txt
+github_token.txt
+serial_registry_settings.json
+update_settings.json
+rtu_deveui_settings.json

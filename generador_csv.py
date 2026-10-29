@@ -10,19 +10,29 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import queue
+import threading
 from datetime import datetime
 from urllib import error as urlerror
 from urllib import request as urlrequest
 from PIL import Image
+from device_manager_updater import (
+    download_update, launch_windows_handoff, notify_update_ready,
+    read_manifest, update_filename,
+)
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.114"
-APP_BUILD_NAME = "Device_Manager_v114"
+APP_VERSION = "1.125"
+APP_BUILD_NAME = "Device_Manager_v125"
 SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
+RTU_DEVEUI_SETTINGS_FILE = "rtu_deveui_settings.json"
+DEFAULT_RTU_NEXT_DEVEUI = "512345678B3A0001"
+LEGACY_RTU_NEXT_DEVEUI = "512345678B2A0001"
+RTU_DEVEUI_BLOCK_STEP = 0x00100000
 DEFAULT_UPDATE_SETTINGS = {
     "manifest_url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/update_manifest.json",
     "auto_check": True,
@@ -43,6 +53,7 @@ SERIAL_FAMILY_SETTINGS = {
 }
 _serial_registry_cache = None
 _serial_refresh_callbacks = []
+_rtu_deveui_refresh_callbacks = []
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _resource(filename):
@@ -87,6 +98,20 @@ def _notify_serial_registry_changed():
             continue
 
 
+def _register_rtu_deveui_refresh_callback(callback):
+    if callback and callback not in _rtu_deveui_refresh_callbacks:
+        _rtu_deveui_refresh_callbacks.append(callback)
+
+
+def _notify_rtu_deveui_changed(value=None):
+    next_value = value or _get_next_rtu_deveui()
+    for callback in list(_rtu_deveui_refresh_callbacks):
+        try:
+            callback(next_value)
+        except Exception:
+            continue
+
+
 def _load_embedded_serial_token():
     for path in (
         _resource("serial_token.txt"),
@@ -107,6 +132,10 @@ def _update_settings_path():
 
 def _serial_settings_path():
     return os.path.join(_runtime_dir(), SERIAL_SETTINGS_FILE)
+
+
+def _rtu_deveui_settings_path():
+    return os.path.join(_runtime_dir(), RTU_DEVEUI_SETTINGS_FILE)
 
 
 def _load_update_settings():
@@ -140,7 +169,19 @@ def _save_update_settings(settings):
 
 def _load_serial_settings():
     settings = dict(DEFAULT_SERIAL_SETTINGS)
-    settings["station_name"] = os.environ.get("COMPUTERNAME", settings["station_name"])
+    path = _serial_settings_path()
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            if isinstance(data, dict):
+                settings.update(data)
+        except Exception:
+            pass
+    settings["branch"] = str(settings.get("branch", "main")).strip() or "main"
+    settings["registry_url"] = str(settings.get("registry_url", "")).strip() or DEFAULT_SERIAL_SETTINGS["registry_url"]
+    settings["api_url"] = str(settings.get("api_url", "")).strip() or DEFAULT_SERIAL_SETTINGS["api_url"]
+    settings["station_name"] = os.environ.get("COMPUTERNAME", str(settings.get("station_name", "")).strip() or DEFAULT_SERIAL_SETTINGS["station_name"])
     settings["token"] = (
         os.environ.get("DEVICE_MANAGER_GITHUB_TOKEN", "").strip()
         or _load_embedded_serial_token()
@@ -150,9 +191,70 @@ def _load_serial_settings():
 
 
 def _save_serial_settings(settings):
+    path = _serial_settings_path()
     merged = dict(DEFAULT_SERIAL_SETTINGS)
     merged.update(settings or {})
+    merged["branch"] = str(merged.get("branch", "main")).strip() or "main"
+    merged["registry_url"] = str(merged.get("registry_url", "")).strip() or DEFAULT_SERIAL_SETTINGS["registry_url"]
+    merged["api_url"] = str(merged.get("api_url", "")).strip() or DEFAULT_SERIAL_SETTINGS["api_url"]
+    merged["station_name"] = str(merged.get("station_name", "")).strip() or DEFAULT_SERIAL_SETTINGS["station_name"]
+    merged["token"] = str(merged.get("token", "")).strip()
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(merged, fh, indent=2, ensure_ascii=False)
     return merged
+
+
+def _normalize_rtu_deveui(value):
+    normalized = str(value or "").strip().upper()
+    if len(normalized) != 16:
+        raise ValueError("RTU DevEUI must have 16 hex characters.")
+    int(normalized, 16)
+    return normalized
+
+
+def _load_rtu_deveui_settings():
+    settings = {"next_deveui": DEFAULT_RTU_NEXT_DEVEUI}
+    path = _rtu_deveui_settings_path()
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            if isinstance(data, dict):
+                settings.update(data)
+        except Exception:
+            pass
+    try:
+        settings["next_deveui"] = _normalize_rtu_deveui(settings.get("next_deveui", DEFAULT_RTU_NEXT_DEVEUI))
+    except Exception:
+        settings["next_deveui"] = DEFAULT_RTU_NEXT_DEVEUI
+    if settings["next_deveui"] == LEGACY_RTU_NEXT_DEVEUI:
+        settings["next_deveui"] = DEFAULT_RTU_NEXT_DEVEUI
+    return settings
+
+
+def _save_rtu_deveui_settings(settings):
+    merged = {"next_deveui": DEFAULT_RTU_NEXT_DEVEUI}
+    merged.update(settings or {})
+    merged["next_deveui"] = _normalize_rtu_deveui(merged.get("next_deveui", DEFAULT_RTU_NEXT_DEVEUI))
+    path = _rtu_deveui_settings_path()
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(merged, fh, indent=2, ensure_ascii=False)
+    return merged
+
+
+def _get_next_rtu_deveui():
+    return _load_rtu_deveui_settings()["next_deveui"]
+
+
+def _advance_rtu_deveui(value, blocks=1):
+    base = int(_normalize_rtu_deveui(value), 16)
+    return f"{base + RTU_DEVEUI_BLOCK_STEP * max(1, int(blocks)):016X}"
+
+
+def _set_next_rtu_deveui(value):
+    saved = _save_rtu_deveui_settings({"next_deveui": value})
+    _notify_rtu_deveui_changed(saved["next_deveui"])
+    return saved["next_deveui"]
 
 
 def _default_serial_registry():
@@ -242,12 +344,15 @@ def _serial_registry_pull(settings):
     branch = str(settings.get("branch", "main")).strip() or "main"
     token = str(settings.get("token", "")).strip() or os.environ.get("DEVICE_MANAGER_GITHUB_TOKEN", "").strip()
     if api_url.lower().startswith(("http://", "https://")):
-        headers = _github_api_headers(token)
-        payload = _request_json(f"{api_url}?ref={branch}", headers=headers)
-        if isinstance(payload, dict) and payload.get("content"):
-            content = str(payload.get("content", "")).replace("\n", "")
-            decoded = base64.b64decode(content).decode("utf-8")
-            return _set_serial_registry_cache(json.loads(decoded))
+        try:
+            headers = _github_api_headers(token)
+            payload = _request_json(f"{api_url}?ref={branch}", headers=headers)
+            if isinstance(payload, dict) and payload.get("content"):
+                content = str(payload.get("content", "")).replace("\n", "")
+                decoded = base64.b64decode(content).decode("utf-8")
+                return _set_serial_registry_cache(json.loads(decoded))
+        except Exception:
+            pass
     registry_url = str(settings.get("registry_url", "")).strip()
     if registry_url.lower().startswith(("http://", "https://")):
         return _set_serial_registry_cache(_download_json(registry_url))
@@ -409,7 +514,7 @@ def _request_json(url, headers=None, data=None, method=None):
         req_headers.update(headers)
     req = urlrequest.Request(url, headers=req_headers, data=data, method=method)
     with urlrequest.urlopen(req, timeout=12) as response:
-        return json.loads(response.read().decode("utf-8"))
+        return json.loads(response.read().decode("utf-8-sig"))
 
 
 def _download_json(url, headers=None):
@@ -422,26 +527,6 @@ def _github_api_headers(token=""):
         headers["Authorization"] = f"Bearer {token}"
     return headers
 
-
-def _download_binary(url, target_path):
-    req = urlrequest.Request(url, headers={"User-Agent": f"{APP_BUILD_NAME}/{APP_VERSION}"})
-    with urlrequest.urlopen(req, timeout=60) as response, open(target_path, "wb") as fh:
-        shutil.copyfileobj(response, fh)
-
-
-def _launch_windows_downloaded_app(downloaded_exe):
-    bat_path = os.path.join(tempfile.gettempdir(), "generadorcsv_launch_update.bat")
-    script = (
-        "@echo off\n"
-        "setlocal EnableExtensions\n"
-        "ping 127.0.0.1 -n 3 > nul\n"
-        f'start "" "{downloaded_exe}"\n'
-        'del "%~f0"\n'
-    )
-    with open(bat_path, "w", encoding="utf-8", newline="\r\n") as fh:
-        fh.write(script)
-    creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    subprocess.Popen(["cmd", "/c", bat_path], creationflags=creation_flags)
 
 def _make_logo_images(display_h=52):
     """Carga logo.png a alta resoluciÃ³n y devuelve (img_light, img_dark).
@@ -565,6 +650,9 @@ TRANSLATIONS = {
         'upd_auto':      'Buscar actualizaciones al abrir',
         'upd_save':      'Guardar configuraciÃ³n',
         'upd_check':     'Buscar actualizaciones',
+        'upd_replace_body':'Version actual: {current}\nNueva version: {latest}\n\nSe descargara en la misma carpeta, se abrira y se eliminara el exe anterior cuando la nueva version arranque.\n\nActualizar ahora?',
+        'upd_downloading':'Descargando actualizacion: {percent}%',
+        'upd_handoff_error':'No se pudo completar la actualizacion. El exe anterior se ha conservado; puedes volver a abrirlo. Si la nueva version esta abierta, puedes usarla y borrar el exe antiguo manualmente.',
         'upd_saved':     'ConfiguraciÃ³n de actualizaciÃ³n guardada.',
         'upd_status_idle':'Configura una URL de manifiesto para activar las actualizaciones online.',
         'upd_status_checking':'Comprobando actualizaciones...',
@@ -588,6 +676,8 @@ TRANSLATIONS = {
         'lbl_json_adc':'ADC:',
         'lbl_json_counters':'Counters:',
         'lbl_json_valves':'Valves:',
+        'lbl_json_valvestatus':'ValveStatus:',
+        'lbl_motorduration':'Motor Duration (ms):',
         'sec_valve':     'Tipo de vÃ¡lvula',
         'sec_allarme':   'Allarme Sportello',
         'sec_adc':       'ADC',
@@ -613,6 +703,7 @@ TRANSLATIONS = {
         'lbl_tic_pdf':  'PDF de salida:',
         'btn_tic_gen':  'Generar PDF',
         'proj_title':   'Generador de Proyecto Completo',
+        'rtu_next_deveui_label': 'Direccion siguiente disponible',
         'sec_proj_loc': 'UbicaciÃ³n del proyecto',
         'lbl_root_fld': 'Carpeta raÃ­z:',
         'lbl_proj_nm':  'Nombre del proyecto:',
@@ -711,6 +802,9 @@ TRANSLATIONS = {
         'serial_repo_publish': 'Guardar contadores en GitHub',
         'serial_repo_save_value': 'Salva valore {family}',
         'serial_repo_save_all': 'Salva tutti i valori',
+        'serial_rtu_deveui_label': 'Proximo indirizzo RTU:',
+        'serial_rtu_deveui_save': 'Salva indirizzo RTU',
+        'serial_rtu_deveui_saved': 'Indirizzo RTU aggiornato: {value}',
         'serial_repo_ready': 'Configura las URL de GitHub, el token y sincroniza el registro serial.',
         'serial_repo_saved': 'Configuracion serial guardada.',
         'serial_repo_synced': 'Registro serial sincronizado desde GitHub.',
@@ -807,6 +901,9 @@ TRANSLATIONS = {
         'upd_auto':      'Check for updates on startup',
         'upd_save':      'Save settings',
         'upd_check':     'Check for updates',
+        'upd_replace_body':'Current version: {current}\nNew version: {latest}\n\nThe update will download to the same folder, open, and remove the previous exe after the new version starts.\n\nUpdate now?',
+        'upd_downloading':'Downloading update: {percent}%',
+        'upd_handoff_error':'The update could not be completed. The previous exe was kept and can be reopened. If the new version is open, you can use it and remove the old exe manually.',
         'upd_saved':     'Update settings saved.',
         'upd_status_idle':'Set a manifest URL to enable online updates.',
         'upd_status_checking':'Checking for updates...',
@@ -830,6 +927,8 @@ TRANSLATIONS = {
         'lbl_json_adc':'ADC:',
         'lbl_json_counters':'Counters:',
         'lbl_json_valves':'Valves:',
+        'lbl_json_valvestatus':'ValveStatus:',
+        'lbl_motorduration':'Motor Duration (ms):',
         'sec_valve':     'Valve type',
         'sec_allarme':   'Door Alarm',
         'sec_adc':       'ADC',
@@ -897,6 +996,8 @@ TRANSLATIONS = {
         'fw_item_old_1000l': 'INSTANTANEO VECCHIO 1000L',
         'serial_title': 'Serial',
         'serial_desc': 'Tools and useful files for serial work.',
+        'proj_title':   'Complete Project Generator',
+        'rtu_next_deveui_label': 'Next available address',
         'serial_section_tools': 'Serial Tools',
         'serial_hyperterminal_title': 'Hyperterminal',
         'serial_hyperterminal_desc': 'Save the Hyperterminal ZIP package wherever you want.',
@@ -921,6 +1022,9 @@ TRANSLATIONS = {
         'serial_repo_publish': 'Save counters to GitHub',
         'serial_repo_save_value': 'Save value {family}',
         'serial_repo_save_all': 'Save all values',
+        'serial_rtu_deveui_label': 'Next RTU address:',
+        'serial_rtu_deveui_save': 'Save RTU address',
+        'serial_rtu_deveui_saved': 'RTU address updated: {value}',
         'serial_repo_ready': 'Configure the GitHub URLs, token, and sync the serial registry.',
         'serial_repo_saved': 'Serial settings saved.',
         'serial_repo_synced': 'Serial registry synced from GitHub.',
@@ -1030,6 +1134,9 @@ TRANSLATIONS = {
         'upd_auto':      "Controlla aggiornamenti all'avvio",
         'upd_save':      'Salva configurazione',
         'upd_check':     'Controlla aggiornamenti',
+        'upd_replace_body':'Versione attuale: {current}\nNuova versione: {latest}\n\nIl nuovo exe viene scaricato nella stessa cartella e avviato. Il precedente viene eliminato dopo la conferma di avvio della nuova versione.\n\nAggiornare adesso?',
+        'upd_downloading':'Download aggiornamento: {percent}%',
+        'upd_handoff_error':"Impossibile completare l'aggiornamento. Il vecchio exe e stato conservato e puo essere riaperto. Se la nuova versione e aperta, puoi usarla ed eliminare il vecchio exe manualmente.",
         'upd_saved':     'Configurazione aggiornamenti salvata.',
         'upd_status_idle':'Configura un URL del manifest per attivare gli aggiornamenti online.',
         'upd_status_checking':'Controllo aggiornamenti...',
@@ -1053,6 +1160,8 @@ TRANSLATIONS = {
         'lbl_json_adc':'ADC:',
         'lbl_json_counters':'Counters:',
         'lbl_json_valves':'Valves:',
+        'lbl_json_valvestatus':'ValveStatus:',
+        'lbl_motorduration':'Motor Duration (ms):',
         'sec_valve':     'Tipo di valvola',
         'sec_allarme':   'Allarme Sportello',
         'sec_adc':       'ADC',
@@ -1078,6 +1187,7 @@ TRANSLATIONS = {
         'lbl_tic_pdf':  'PDF di output:',
         'btn_tic_gen':  'Genera PDF',
         'proj_title':   'Generatore Progetto Completo',
+        'rtu_next_deveui_label': 'Indirizzo prossimo disponibile',
         'sec_proj_loc': 'Posizione del progetto',
         'lbl_root_fld': 'Cartella radice:',
         'lbl_proj_nm':  'Nome del progetto:',
@@ -1176,6 +1286,9 @@ TRANSLATIONS = {
         'serial_repo_publish': 'Salva contatori su GitHub',
         'serial_repo_save_value': 'Salva valore {family}',
         'serial_repo_save_all': 'Salva tutti i valori',
+        'serial_rtu_deveui_label': 'Prossimo indirizzo RTU:',
+        'serial_rtu_deveui_save': 'Salva indirizzo RTU',
+        'serial_rtu_deveui_saved': 'Indirizzo RTU aggiornato: {value}',
         'serial_repo_ready': 'Configura le URL di GitHub, il token e sincronizza il registro seriale.',
         'serial_repo_saved': 'Configurazione seriale salvata.',
         'serial_repo_synced': 'Registro seriale sincronizzato da GitHub.',
@@ -1317,88 +1430,149 @@ def _notify_registry_update_failure(parent, error):
     )
 
 
+_update_busy = False
+
+
+def _run_update_job(root, work, on_success, on_error, on_progress=None):
+    events = queue.Queue()
+
+    def worker():
+        try:
+            result = work(lambda percent: events.put(("progress", percent)))
+            events.put(("done", result))
+        except Exception as exc:
+            events.put(("error", exc))
+
+    def poll():
+        if not root.winfo_exists():
+            return
+        try:
+            while True:
+                event, payload = events.get_nowait()
+                if event == "progress":
+                    if on_progress:
+                        on_progress(payload)
+                elif event == "done":
+                    on_success(payload)
+                    return
+                else:
+                    on_error(payload)
+                    return
+        except queue.Empty:
+            root.after(100, poll)
+
+    threading.Thread(target=worker, daemon=True).start()
+    root.after(100, poll)
+
+
 def check_for_updates(parent, interactive=True, status_cb=None):
+    global _update_busy
+    if _update_busy:
+        return False
+    root = parent.winfo_toplevel()
     settings = _load_update_settings()
     manifest_url = str(settings.get("manifest_url", "")).strip()
-
     if not manifest_url:
         if interactive:
-            if status_cb:
-                status_cb(t("upd_status_disabled"))
-            messagebox.showerror(t("upd_error_title"), t("upd_error_no_url"), parent=parent)
+            messagebox.showerror(t("upd_error_title"), t("upd_error_no_url"), parent=root)
         return False
+    _update_busy = True
+    user_agent = f"{APP_BUILD_NAME}/{APP_VERSION}"
 
-    if status_cb:
-        status_cb(t("upd_status_checking"))
-        try:
-            parent.update()
-        except Exception:
-            pass
-
-    try:
-        manifest = _download_json(manifest_url)
-    except (urlerror.URLError, TimeoutError, ValueError) as exc:
+    def set_status(text):
         if status_cb:
-            status_cb(t("upd_status_idle"))
+            status_cb(text)
+
+    def finish():
+        global _update_busy
+        _update_busy = False
+
+    def check_failed(exc):
+        finish()
+        set_status(t("upd_error_network").format(error=exc))
         if interactive:
-            messagebox.showerror(t("upd_error_title"), t("upd_error_network").format(error=exc), parent=parent)
-        return False
+            messagebox.showerror(t("upd_error_title"), t("upd_error_network").format(error=exc), parent=root)
 
-    latest_version = str(manifest.get("version", "")).strip()
-    download_url = str(manifest.get("url", "")).strip()
-    if not latest_version or not download_url:
-        if status_cb:
-            status_cb(t("upd_status_idle"))
-        if interactive:
-            messagebox.showerror(t("upd_error_title"), t("upd_error_bad_manifest"), parent=parent)
-        return False
+    def manifest_ready(manifest):
+        latest = manifest["version"]
+        if _parse_version(latest) <= _parse_version(APP_VERSION):
+            finish()
+            set_status(t("upd_status_latest"))
+            if interactive:
+                messagebox.showinfo(t("upd_title"), t("upd_status_latest"), parent=root)
+            return
+        set_status(t("upd_status_available").format(version=latest))
+        if not messagebox.askyesno(
+            t("upd_confirm_title"),
+            t("upd_replace_body").format(current=APP_VERSION, latest=latest),
+            parent=root,
+        ):
+            finish()
+            return
 
-    if _parse_version(latest_version) <= _parse_version(APP_VERSION):
-        if status_cb:
-            status_cb(t("upd_status_latest"))
-        if interactive:
-            messagebox.showinfo(t("upd_title"), t("upd_status_latest"), parent=parent)
-        return False
+        filename = update_filename(manifest)
+        target = os.path.join(_runtime_dir(), filename)
+        if os.path.normcase(os.path.abspath(target)) == os.path.normcase(os.path.abspath(sys.executable)):
+            target = os.path.join(_runtime_dir(), os.path.splitext(filename)[0] + "_updated.exe")
 
-    if status_cb:
-        status_cb(t("upd_status_available").format(version=latest_version))
+        def begin_download(target):
+            progress_window = ctk.CTkToplevel(root)
+            progress_window.title(t("upd_title"))
+            progress_window.geometry("460x150")
+            progress_window.resizable(False, False)
+            progress_window.transient(root)
+            progress_window.protocol("WM_DELETE_WINDOW", lambda: None)
+            label = ctk.CTkLabel(progress_window, text=t("upd_downloading").format(percent=0))
+            label.pack(pady=(24, 14))
+            progress_bar = ctk.CTkProgressBar(progress_window, width=390)
+            progress_bar.set(0)
+            progress_bar.pack()
+            progress_window.after(100, progress_window.grab_set)
 
-    if not messagebox.askyesno(
-        t("upd_confirm_title"),
-        t("upd_confirm_body").format(current=APP_VERSION, latest=latest_version),
-        parent=parent,
-    ):
-        return False
+            def show_progress(percent):
+                label.configure(text=t("upd_downloading").format(percent=percent))
+                progress_bar.set(percent / 100)
 
-    try:
-        target = filedialog.asksaveasfilename(
-            parent=parent,
-            title=t("upd_download_title"),
-            initialfile=os.path.basename(download_url) or f"{APP_BUILD_NAME}_{latest_version}.exe",
-            defaultextension=".exe",
-            filetypes=[("Executable", "*.exe"), ("All files", "*.*")],
-        )
-        if not target:
-            return False
+            def download_failed(exc):
+                progress_window.destroy()
+                if isinstance(exc, PermissionError):
+                    alternate = filedialog.asksaveasfilename(
+                        parent=root, title=t("upd_download_title"),
+                        initialdir=_desktop_dir(), initialfile=filename,
+                        defaultextension=".exe", filetypes=[("Executable", "*.exe")],
+                    )
+                    if alternate:
+                        begin_download(alternate)
+                        return
+                finish()
+                set_status(t("upd_error_download").format(error=exc))
+                messagebox.showerror(t("upd_error_title"), t("upd_error_download").format(error=exc), parent=root)
 
-        _download_binary(download_url, target)
+            def downloaded(digest):
+                if getattr(sys, "frozen", False):
+                    try:
+                        launch_windows_handoff(target, digest, t("upd_handoff_error"))
+                    except (OSError, ValueError) as exc:
+                        download_failed(exc)
+                        return
+                    set_status(t("upd_success_restart"))
+                    progress_window.destroy()
+                    root.after(200, root.destroy)
+                else:
+                    progress_window.destroy()
+                    finish()
+                    messagebox.showinfo(t("upd_title"), f"{latest}\n\n{target}", parent=root)
 
-        if getattr(sys, "frozen", False):
-            _launch_windows_downloaded_app(target)
-            if status_cb:
-                status_cb(t("upd_success_restart"))
-            messagebox.showinfo(t("upd_title"), t("upd_success_restart"), parent=parent)
-            parent.after(300, parent.destroy)
-            return True
-        if status_cb:
-            status_cb(t("upd_status_available").format(version=latest_version))
-        messagebox.showinfo(t("upd_title"), f"{latest_version}\n\n{target}", parent=parent)
-        return True
-    except (urlerror.URLError, TimeoutError, OSError) as exc:
-        if status_cb:
-            status_cb(t("upd_status_idle"))
-        messagebox.showerror(t("upd_error_title"), t("upd_error_download").format(error=exc), parent=parent)
-        return False
+            _run_update_job(
+                root, lambda progress: download_update(manifest, target, user_agent, progress),
+                downloaded, download_failed, show_progress,
+            )
+
+        begin_download(target)
+
+    set_status(t("upd_status_checking"))
+    _run_update_job(root, lambda _: read_manifest(manifest_url, user_agent), manifest_ready, check_failed)
+    return True
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 FIXED_APP_EUI = "665544332211AABB"
@@ -2148,7 +2322,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
             count = len(base_devices)
             if count <= 0:
                 return
-            next_start, _ = _next_available_serial("RTU", count=count, settings=_load_serial_settings())
+            next_start, _ = _next_available_serial("RTU", count=count, settings=_load_serial_settings(), force=True)
             width = max(len(self.serial_start_var.get().strip()), SERIAL_FAMILY_SETTINGS["RTU"]["number_width"])
             self.serial_start_var.set(f"{next_start:0{width}d}")
             self._update_auto_pdf_output()
@@ -2405,7 +2579,7 @@ _JSON_BASE = {
 }
 
 
-def _build_json(dev_eui, dev_addr, model_type, allarme_on, sendinterval=130000, adc_value=0, counter_count=1, valve_count=0, valve_type="motorizzata"):
+def _build_json(dev_eui, dev_addr, model_type, allarme_on, sendinterval=130000, adc_value=0, counter_count=1, valve_count=0, valve_type="motorizzata", valve_status=0, motor_duration=12000):
     """Construye el dict JSON para un dispositivo.
     valve_type: 'motorizzata' â†’ valvetype=1  |  'elba' â†’ valvetype=0
     adc_on: True â†’ adc=1  |  False â†’ adc=0
@@ -2418,8 +2592,10 @@ def _build_json(dev_eui, dev_addr, model_type, allarme_on, sendinterval=130000, 
     data["device"]["adc"]          = int(adc_value)
     data["device"]["valvetype"]    = 0 if is_loracont else (1 if valve_type == "motorizzata" else 0)
     data["device"]["sendinterval"] = int(sendinterval)
+    data["device"]["motorduration"] = int(motor_duration)
     data["device"]["numcounters"]  = counter_total
     data["device"]["numvalves"]    = valve_total
+    data["device"]["valvestatus"]  = int(valve_status)
     data["radio"]["deui"]  = dev_eui
     data["radio"]["daddr"] = dev_addr
     data["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -2671,6 +2847,14 @@ class JSONTab(ctk.CTkScrollableFrame):
         self._json_counters_menu = ctk.CTkOptionMenu(r_counters, variable=self.json_counters_var, values=[str(i) for i in range(9)], width=120)
         self._json_counters_menu.pack(side="left", padx=(4, 0))
 
+        r_valvestatus = _row(self)
+        lbl_json_valvestatus = ctk.CTkLabel(r_valvestatus, text=t('lbl_json_valvestatus'), width=LBL_W, anchor="w")
+        lbl_json_valvestatus.pack(side="left")
+        self._refs['lbl_json_valvestatus'] = lbl_json_valvestatus
+        self.json_valvestatus_var = tk.StringVar(value="0")
+        self._json_valvestatus_menu = ctk.CTkOptionMenu(r_valvestatus, variable=self.json_valvestatus_var, values=["0", "1"], width=120)
+        self._json_valvestatus_menu.pack(side="left", padx=(4, 0))
+
         # â”€â”€ Tipo de vÃ¡lvula â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_valve', self._refs)
         self.valve_var = tk.StringVar(value="motorizzata")
@@ -2702,6 +2886,7 @@ class JSONTab(ctk.CTkScrollableFrame):
         # â”€â”€ ParÃ¡metros de envÃ­o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_send_params', self._refs)
         self._frow('lbl_sendinterval', "130000", "j_sendinterval", w=140)
+        self._frow('lbl_motorduration', "12000", "j_motorduration", w=140)
         self._sync_json_model_type()
 
         # â”€â”€ Carpeta de salida â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -2815,7 +3000,9 @@ class JSONTab(ctk.CTkScrollableFrame):
             adc_value    = self.json_adc_var.get().strip() or "0"
             counter_count = self.json_counters_var.get().strip() or "0"
             valve_count  = "0" if model_type == "loracont" else (self.json_valves_var.get().strip() or "0")
+            valve_status = self.json_valvestatus_var.get().strip() or "0"
             sendinterval = int(self.j_sendinterval_var.get().strip())
+            motor_duration = int(self.j_motorduration_var.get().strip())
 
             if not folder:
                 messagebox.showerror("Error", "Selecciona una carpeta de salida."); return
@@ -2829,6 +3016,8 @@ class JSONTab(ctk.CTkScrollableFrame):
                 messagebox.showerror("Error", "Counters debe ser numerico."); return
             if not valve_count.isdigit():
                 messagebox.showerror("Error", "Valves debe ser numerico."); return
+            if valve_status not in ("0", "1"):
+                messagebox.showerror("Error", "ValveStatus debe ser 0 o 1."); return
             if len(deveui_s) != 16:
                 messagebox.showerror("Error", f"DevEUI debe tener 16 hex (tiene {len(deveui_s)})."); return
             int(deveui_s, 16)
@@ -2853,6 +3042,8 @@ class JSONTab(ctk.CTkScrollableFrame):
                     counter_count,
                     valve_count,
                     valve,
+                    valve_status,
+                    motor_duration,
                 )
                 filepath = os.path.join(folder, f"{name}.JSON")
                 with open(filepath, "w", encoding="utf-8") as f:
@@ -2885,9 +3076,12 @@ class ProjectTab(ctk.CTkScrollableFrame):
         super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
         self._refs = {}
+        self._last_rtu_deveui = ""
         self._build()
+        self._apply_next_rtu_deveui(_get_next_rtu_deveui())
         _lang_cbs.append(self._refresh_lang)
         _register_serial_refresh_callback(self._handle_serial_registry_changed)
+        _register_rtu_deveui_refresh_callback(self._handle_rtu_deveui_changed)
 
     def _build(self):
         # TÃ­tulo
@@ -3020,6 +3214,16 @@ class ProjectTab(ctk.CTkScrollableFrame):
         )
         self._proj_json_counters_menu.pack(side="left", padx=(4, 0))
 
+        r_proj_valvestatus = _row(self)
+        lbl_proj_valvestatus = ctk.CTkLabel(r_proj_valvestatus, text=t('lbl_json_valvestatus'), width=LBL_W, anchor="w")
+        lbl_proj_valvestatus.pack(side="left")
+        self._refs['proj_lbl_json_valvestatus'] = lbl_proj_valvestatus
+        self.p_json_valvestatus_var = tk.StringVar(value="0")
+        self._proj_json_valvestatus_menu = ctk.CTkOptionMenu(
+            r_proj_valvestatus, variable=self.p_json_valvestatus_var, values=["0", "1"], width=120
+        )
+        self._proj_json_valvestatus_menu.pack(side="left", padx=(4, 0))
+
         _sec(self, 'sec_valve', self._refs)
         self.p_valve_var = tk.StringVar(value="motorizzata")
         self._project_valve_buttons = []
@@ -3050,6 +3254,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
                                ).pack(anchor="w", padx=28, pady=3)
 
         self._frow('lbl_sendinterval', "130000", "p_sendinterval", w=140)
+        self._frow('lbl_motorduration', "12000", "p_motorduration", w=140)
         self._sync_project_json_params_from_label()
 
         # â”€â”€ BotÃ³n principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -3174,13 +3379,21 @@ class ProjectTab(ctk.CTkScrollableFrame):
     def _handle_serial_registry_changed(self):
         self.after(0, self._use_next_serial_from_github)
 
+    def _apply_next_rtu_deveui(self, value):
+        normalized = _normalize_rtu_deveui(value)
+        self.p_deveui_var.set(normalized)
+        self._last_rtu_deveui = normalized
+
+    def _handle_rtu_deveui_changed(self, value):
+        self.after(0, lambda: self._apply_next_rtu_deveui(value))
+
     def _use_next_serial_from_github(self):
         try:
             start = int(self.p_from_var.get().strip())
             end = int(self.p_to_var.get().strip())
             if end < start:
                 return
-            next_start, _ = _next_available_serial("RTU", count=(end - start + 1), settings=_load_serial_settings())
+            next_start, _ = _next_available_serial("RTU", count=(end - start + 1), settings=_load_serial_settings(), force=True)
             width = max(len(self.p_ser_start_var.get().strip()), SERIAL_FAMILY_SETTINGS["RTU"]["number_width"])
             self.p_ser_start_var.set(f"{next_start:0{width}d}")
             self._status_lbl.configure(
@@ -3217,7 +3430,9 @@ class ProjectTab(ctk.CTkScrollableFrame):
             adc_value    = self.p_json_adc_var.get().strip() or "0"
             counter_count = self.p_json_counters_var.get().strip() or "0"
             valve_count  = "0" if label_opt == "loracont" else (self.p_json_valves_var.get().strip() or "0")
+            valve_status = self.p_json_valvestatus_var.get().strip() or "0"
             sendinterval = int(self.p_sendinterval_var.get().strip())
+            motor_duration = int(self.p_motorduration_var.get().strip())
             project_childnumber = "0" if label_opt == "loracont" else (self.p_childnumber_var.get().strip() or "1")
 
             if not root:
@@ -3243,6 +3458,8 @@ class ProjectTab(ctk.CTkScrollableFrame):
                 messagebox.showerror("Error", "La cantidad de counters debe ser numerica."); return
             if label_opt != "loracont" and not valve_count.isdigit():
                 messagebox.showerror("Error", "La cantidad de valvulas debe ser numerica."); return
+            if valve_status not in ("0", "1"):
+                messagebox.showerror("Error", "ValveStatus debe ser 0 o 1."); return
 
             num_devices = end - start + 1
             deveui_int  = int(deveui_s, 16)
@@ -3292,6 +3509,8 @@ class ProjectTab(ctk.CTkScrollableFrame):
                     counter_count,
                     valve_count,
                     valve,
+                    valve_status,
+                    motor_duration,
                 )
                 with open(os.path.join(json_dir, f"{dev['name']}.JSON"),
                           "w", encoding="utf-8") as f:
@@ -3332,6 +3551,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
                     end=f"{ser_start + num_devices - 1:0{ser_width}d}",
                     year=ser_year,
                 ))
+            _set_next_rtu_deveui(_advance_rtu_deveui(deveui_s))
             _notify_serial_registry_changed()
             messagebox.showinfo("Ã‰xito",
                 f"Proyecto generado correctamente.\n\n"
@@ -3526,7 +3746,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
     def _use_next_serial_from_github(self):
         try:
             _, _, count = self._current_count()
-            next_start, next_end = _next_available_serial(self._family, count=count, settings=_load_serial_settings())
+            next_start, next_end = _next_available_serial(self._family, count=count, settings=_load_serial_settings(), force=True)
             width = max(len(self.tic_from_var.get().strip()), SERIAL_FAMILY_SETTINGS[self._family]["number_width"])
             self.tic_from_var.set(f"{next_start:0{width}d}")
             self.tic_to_var.set(f"{next_end:0{width}d}")
@@ -4082,7 +4302,7 @@ class GatewayTab(ctk.CTkScrollableFrame):
         return serials
 
     def _next_gateway_serial(self):
-        repo_last = _next_available_serial("GW", settings=_load_serial_settings())[0] - 1
+        repo_last = _next_available_serial("GW", settings=_load_serial_settings(), force=True)[0] - 1
         local_serials = self._gateway_serial_numbers()
         next_value = max([repo_last, *local_serials] if local_serials else [repo_last]) + 1
         width = max(SERIAL_FAMILY_SETTINGS["GW"]["number_width"], len(str(next_value)))
@@ -4244,7 +4464,10 @@ FW_DOWNLOADS = {
         {
             "label_key": "fw_item_loracont",
             "pic": "PIC24FJ128GL302",
-            "firmwares": [("1.0.5_REV2.15.06.2026", "CONTATORE_REL.1.0.5_REV2.15.06.2026.production.INFO.hex")],
+            "firmwares": [
+                ("INFO 1.0.6", "CONTATORE_REL.1.0.6_REV2.22.10.2026.production.INFO.hex"),
+                ("TRACE 1.0.6", "CONTATORE_REL.1.0.6_REV2.22.10.2026.production.TRACE.hex"),
+            ],
         },
         {
             "label_key": "fw_item_rn2483",
@@ -4291,7 +4514,15 @@ FW_DOWNLOADS = {
         {
             "label_key": "fw_item_new",
             "pic": "PIC18F65K90",
-            "firmwares": [("Istantaneo ultima versionhe", "Istantaneo ultima versionhe.hex")],
+            "firmwares": [
+                ("Istantaneo ultima versionhe", "Istantaneo ultima versionhe.hex"),
+                ("RST 10 L", "RST_10L.production.hex"),
+                ("RST 100 L", "RST_100L.production.hex"),
+                ("RST 1000 L", "RST_1000L.production.hex"),
+                ("RST 10 Gal AF Med", "RST_10Gal_AF_Med.production.hex"),
+                ("RST 100 Gal AF Med", "RST_100Gal_AF_Med.production.hex"),
+                ("RST 1000 Gal AF Med", "RST_1000Gal_AF_Med.production.hex"),
+            ],
         },
         {
             "label_key": "fw_item_old_100l",
@@ -4444,9 +4675,16 @@ class FWVersionTab(ctk.CTkScrollableFrame):
             pic_button.pack(side="right", padx=(8, 0))
             self._pic_buttons.append((item["pic"], pic_button))
 
-            for fw_label, fw_file in reversed(item["firmwares"]):
+            firmware_grid = len(item["firmwares"]) > 2
+            firmware_parent = row_frame
+            if firmware_grid:
+                firmware_parent = ctk.CTkFrame(card, fg_color="transparent")
+                firmware_parent.pack(fill="x", padx=14, pady=(0, 6))
+                firmware_parent.grid_columnconfigure((0, 1, 2), weight=1, uniform="firmware")
+            firmware_items = item["firmwares"] if firmware_grid else reversed(item["firmwares"])
+            for fw_index, (fw_label, fw_file) in enumerate(firmware_items):
                 fw_button = ctk.CTkButton(
-                    row_frame,
+                    firmware_parent,
                     text=fw_label,
                     width=150,
                     command=lambda f=fw_file: self._save_firmware(f),
@@ -4454,7 +4692,11 @@ class FWVersionTab(ctk.CTkScrollableFrame):
                     **self.FIRMWARE_BUTTON_COLORS,
                 )
                 fw_button._dm_style_locked = True
-                fw_button.pack(side="right", padx=(8, 0))
+                if firmware_grid:
+                    fw_button.grid(row=fw_index // 3, column=fw_index % 3,
+                                   sticky="ew", padx=4, pady=4)
+                else:
+                    fw_button.pack(side="right", padx=(8, 0))
 
             if not item["firmwares"]:
                 no_hex_label = ctk.CTkLabel(
@@ -4472,7 +4714,7 @@ class FWVersionTab(ctk.CTkScrollableFrame):
 
 class SerialTab(ctk.CTkScrollableFrame):
     PACKAGE_FILE = "Hyperterminal.zip"
-    TERMINAL_ANTONIO_FILE = "APP_BLE_SERIAL__25_01_2026_wx.zip"
+    TERMINAL_ANTONIO_FILE = "APP_BLE_SERIAL__22_06_2026_wx.zip"
 
     def __init__(self, master):
         super().__init__(master, fg_color=C_BODY_BG, corner_radius=0, border_width=0, label_text="")
@@ -4495,11 +4737,15 @@ class SerialTab(ctk.CTkScrollableFrame):
         self._repo_token_var = tk.StringVar(value=self._serial_settings.get("token", ""))
         self._repo_station_var = tk.StringVar(value=self._serial_settings.get("station_name", DEFAULT_SERIAL_SETTINGS["station_name"]))
         self._family_vars = {family: tk.StringVar(value="0") for family in SERIAL_FAMILY_ORDER}
+        self._rtu_next_deveui_var = tk.StringVar(value=_get_next_rtu_deveui())
         self._family_labels = {}
+        self._rtu_deveui_label = None
+        self._rtu_deveui_save_btn = None
         self._registry_status_lbl = None
         self._status_lbl = None
         self._build()
         _lang_cbs.append(self._refresh_lang)
+        _register_rtu_deveui_refresh_callback(self._handle_rtu_deveui_changed)
 
     def _build(self):
         self._title_lbl = ctk.CTkLabel(self, text=t("serial_title"), font=ctk.CTkFont(size=18, weight="bold"))
@@ -4630,6 +4876,28 @@ class SerialTab(ctk.CTkScrollableFrame):
             if idx < len(SERIAL_FAMILY_ORDER) - 1:
                 ctk.CTkFrame(family_card, height=1, fg_color=C_DIV).pack(fill="x", padx=12)
 
+        ctk.CTkFrame(family_card, height=1, fg_color=C_DIV).pack(fill="x", padx=12, pady=(2, 2))
+
+        rtu_addr_row = ctk.CTkFrame(family_card, fg_color="transparent")
+        rtu_addr_row.pack(fill="x", padx=14, pady=6)
+        self._rtu_deveui_label = ctk.CTkLabel(
+            rtu_addr_row,
+            text=t("serial_rtu_deveui_label"),
+            width=180,
+            anchor="w",
+            font=ctk.CTkFont(size=13, weight="bold"),
+        )
+        self._rtu_deveui_label.pack(side="left")
+        ctk.CTkEntry(rtu_addr_row, textvariable=self._rtu_next_deveui_var, width=220).pack(side="left", padx=(4, 10))
+        self._rtu_deveui_save_btn = ctk.CTkButton(
+            rtu_addr_row,
+            text=t("serial_rtu_deveui_save"),
+            width=220,
+            command=self._save_rtu_deveui_value,
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        self._rtu_deveui_save_btn.pack(side="left", padx=(6, 0))
+
         self._save_all_btn = ctk.CTkButton(
             self,
             text=t("serial_repo_save_all"),
@@ -4697,7 +4965,7 @@ class SerialTab(ctk.CTkScrollableFrame):
         }
 
     def _save_repo_settings(self):
-        self._serial_settings = self._collect_settings()
+        self._serial_settings = _save_serial_settings(self._collect_settings())
         if self._registry_status_lbl is not None:
             self._registry_status_lbl.configure(text=t("serial_repo_ready"))
 
@@ -4705,6 +4973,7 @@ class SerialTab(ctk.CTkScrollableFrame):
         registry = _normalize_serial_registry(registry)
         for family in SERIAL_FAMILY_ORDER:
             self._family_vars[family].set(str(registry["families"][family]["last_serial"]))
+        self._rtu_next_deveui_var.set(_get_next_rtu_deveui())
         self._status_lbl.configure(text=t("serial_status"))
 
     def _auto_load_registry(self):
@@ -4783,6 +5052,24 @@ class SerialTab(ctk.CTkScrollableFrame):
         except Exception as exc:
             messagebox.showerror(t("serial_error_title"), str(exc))
 
+    def _save_rtu_deveui_value(self):
+        try:
+            if not _prompt_serial_password(self):
+                return
+            value = _normalize_rtu_deveui(self._rtu_next_deveui_var.get().strip())
+            self._rtu_next_deveui_var.set(_set_next_rtu_deveui(value))
+            self._status_lbl.configure(text=t("serial_rtu_deveui_saved").format(value=value))
+            messagebox.showinfo(
+                t("serial_repo_saved_title"),
+                t("serial_rtu_deveui_saved").format(value=value),
+                parent=self,
+            )
+        except Exception as exc:
+            messagebox.showerror(t("serial_error_title"), str(exc))
+
+    def _handle_rtu_deveui_changed(self, value):
+        self.after(0, lambda: self._rtu_next_deveui_var.set(value))
+
     def _refresh_lang(self):
         self._title_lbl.configure(text=t("serial_title"))
         self._desc_lbl.configure(text=t("serial_desc"))
@@ -4801,6 +5088,8 @@ class SerialTab(ctk.CTkScrollableFrame):
             widget.configure(text=_serial_family_name(family))
         for family, button in self._family_save_buttons.items():
             button.configure(text=t("serial_repo_save_value").format(family=_serial_family_name(family)))
+        self._rtu_deveui_label.configure(text=t("serial_rtu_deveui_label"))
+        self._rtu_deveui_save_btn.configure(text=t("serial_rtu_deveui_save"))
         self._save_all_btn.configure(text=t("serial_repo_save_all"))
         self._registry_status_lbl.configure(text=t("serial_repo_ready"))
         self._status_lbl.configure(text=t("serial_status"))
@@ -4831,7 +5120,7 @@ class ManualsTab(ctk.CTkScrollableFrame):
         (
             "manuals_group_tic12",
             [
-                os.path.join("Manuali", "TIC12", "Centralina Controlavaggio TIC12 - Istruzioni operative e connessioni - rev 0.3c ITA-ENG tuv-nord.pdf"),
+                os.path.join("Manuali", "TIC12", "Centralina-Controlavaggio-TIC12-Istruzioni-operative-e-connessioni-rev-0.3c-ITA-ENG-tuv-nord.pdf"),
             ],
         ),
     ]
@@ -5072,6 +5361,13 @@ class App:
             text_color=C_HINT,
         )
         self._header_subtitle.pack(anchor="w", pady=(4, 0))
+        self._rtu_next_deveui_lbl = ctk.CTkLabel(
+            title_box,
+            text="",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=C_HINT,
+        )
+        self._rtu_next_deveui_lbl.pack(anchor="w", pady=(6, 0))
 
         self._rtu_segment_var = tk.StringVar(value="Proyecto")
         self._rtu_segment = ctk.CTkSegmentedButton(
@@ -5135,6 +5431,7 @@ class App:
 
         _apply_premium_theme(main_area)
         _lang_cbs.append(self._refresh_lang)
+        _register_rtu_deveui_refresh_callback(self._handle_rtu_deveui_changed)
         self._refresh_lang()
         self._show_section("RTU")
 
@@ -5165,6 +5462,7 @@ class App:
         title, subtitle = self._section_header(section_name)
         self._header_title.configure(text=title)
         self._header_subtitle.configure(text=subtitle)
+        self._update_rtu_deveui_header()
         if section_name == "RTU":
             self._rtu_segment.pack(side="right", padx=22, pady=26)
             self._show_rtu_section(self._active_rtu_section)
@@ -5197,11 +5495,24 @@ class App:
             title, subtitle = self._section_header(self._active_section)
             self._header_title.configure(text=title)
             self._header_subtitle.configure(text=subtitle)
+        self._update_rtu_deveui_header()
+
+    def _handle_rtu_deveui_changed(self, value):
+        self.root.after(0, self._update_rtu_deveui_header)
+
+    def _update_rtu_deveui_header(self):
+        if self._active_section == "RTU":
+            self._rtu_next_deveui_lbl.configure(
+                text=f"{t('rtu_next_deveui_label')}: {_get_next_rtu_deveui()}"
+            )
+        else:
+            self._rtu_next_deveui_lbl.configure(text="")
 
 
 def main():
     root = ctk.CTk()
     App(root)
+    root.after_idle(notify_update_ready)
     root.mainloop()
 
 if __name__ == "__main__":
