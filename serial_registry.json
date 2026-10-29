@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-10-27T15:26:28Z",
+  "updated_at": "2026-10-29T13:31:40Z",
   "families": {
     "RTU": {
       "last_serial": 7997,
@@ -27,11 +27,11 @@
       "last_year": "2026"
     },
     "TIC12": {
-      "last_serial": 139,
-      "updated_at": "2026-06-15T09:02:17Z",
+      "last_serial": 200,
+      "updated_at": "2026-10-29T13:31:40Z",
       "updated_by": "LAPTOP-PU7L11GO",
-      "last_count": 0,
-      "last_range": "0139-0139",
+      "last_count": 37,
+      "last_range": "0164-0200",
       "last_year": "2026"
     }
   }
