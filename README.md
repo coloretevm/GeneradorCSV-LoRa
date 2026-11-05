@@ -1,8 +1,8 @@
 # Device Manager - TECNIDRO
 
-Versione pubblicata: **1.128** (05/11/2026).
+Versione pubblicata: **1.129** (05/11/2026).
 
-[Scarica Device_Manager_v128.exe](https://github.com/coloretevm/GeneradorCSV-LoRa/raw/refs/heads/main/downloads/Device_Manager_v128.exe)
+[Scarica Device_Manager_v129.exe](https://github.com/coloretevm/GeneradorCSV-LoRa/raw/refs/heads/main/downloads/Device_Manager_v129.exe)
 
 ## Aggiornamenti automatici
 
@@ -12,7 +12,15 @@ Il manifest `update_manifest.json` contiene versione, URL del download, dimensio
 
 Chi usa la v125 puo aggiornare alla v127 dal programma. Per una prima installazione si puo scaricare direttamente la v127.
 
-## Interfaccia guidata v128
+## Novita v129
+
+Il primo avvio usa il tema scuro anche se la v128 aveva salvato il precedente default chiaro. Dopo questa migrazione, le nuove scelte esplicite del tema vengono conservate.
+
+Impostazioni apre direttamente Seriali GitHub: puoi correggere l'ultimo seriale usato di RTU, GW, I-TIC, TIC12 e Istantaneo con Salva valore oppure Salva tutti i valori. Ogni salvataggio chiede la password amministrativa; sono consentite anche correzioni verso valori inferiori. RTU e LORACONT mantengono il contatore RTU condiviso. La sincronizzazione non cancella una modifica manuale non ancora salvata.
+
+Manuali > Fogli adesivi contiene ora il foglio QR Manuale TIC12 ridotto: 130 adesivi su A4, riquadro 18 x 20 mm, QR da 15 mm e testo Manual ITA-ENG, identici al modello usato nel generatore TIC12. Stampare al 100% delle dimensioni.
+
+## Interfaccia guidata
 
 La schermata iniziale presenta RTU, LORACONT, Gateway, I-TIC, TIC12 e Istantaneo con le immagini prodotto. Apri dispositivo avvia il percorso e Menu precedente torna al menu padre mantenendo i dati della lavorazione.
 
@@ -54,7 +62,7 @@ La sezione Istantaneo genera etichette 100L o 1000L, con un contatore unico cond
 - `label_assets/`: QR originali e simbolo batteria vettoriale alle dimensioni originali.
 - `test_device_manager_updater.py`: test del manifest e dei download, compresi i casi di errore.
 - `fw/` e `manuali/`: file firmware e manuali.
-- `downloads/Device_Manager_v128.exe`: eseguibile pubblicato.
+- `downloads/Device_Manager_v129.exe`: eseguibile pubblicato.
 - `CHANGELOG.md`: modifiche pubblicate.
 
 La v125 include i firmware LoraCont 1.0.6 INFO/TRACE, il manuale TIC12 aggiornato, le sei varianti RST per Instantaneo Nuovo e Terminal Antonio del 22/06/2026.
@@ -63,4 +71,4 @@ La v125 include i firmware LoraCont 1.0.6 INFO/TRACE, il manuale TIC12 aggiornat
 
 Dipendenze principali: Python, CustomTkinter, Pillow, ReportLab, qrcode e pypdfium2 per le anteprime. Vedere requirements_device_manager.txt. Per generare un exe si usa PyInstaller, includendo le risorse firmware, manuali, ZIP e immagini. I file `serial_token.txt` e le configurazioni locali delle credenziali sono esclusi dal versionamento dei sorgenti.
 
-Eseguire i test con `python -m unittest test_device_manager_updater test_device_manager_labels test_device_manager_serials test_device_manager_ui test_device_manager_guided -v`. Per i test PDF serve anche `pypdf`.
+Eseguire i test con `python -m unittest test_device_manager_updater test_device_manager_labels test_device_manager_serials test_device_manager_ui test_device_manager_guided test_device_manager_preferences -v`. Per i test PDF serve anche `pypdf`.

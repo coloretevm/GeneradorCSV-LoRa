@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.129 - 05/11/2026
+
+- Tema scuro predefinito al primo avvio, anche aggiornando una configurazione v128 che conservava il precedente default chiaro.
+- Migrazione delle preferenze una sola volta: dopo la migrazione, una scelta esplicita del tema chiaro/scuro viene ricordata. La lingua selezionata resta invariata.
+- Impostazioni apre direttamente la scheda Seriali GitHub. I contatori non sono piu nascosti sotto i pacchetti terminale.
+- Salvataggio singolo per RTU, GW, I-TIC, TIC12 e Istantaneo, oppure Salva tutti i valori; ogni salvataggio richiede la password amministrativa gia configurata.
+- Le correzioni manuali possono diminuire l'ultimo seriale usato. Dopo il salvataggio, i generatori aggiornano il prossimo disponibile senza riavvio.
+- I dati vengono letti in background; la sincronizzazione non sovrascrive una modifica manuale non ancora salvata. I contatori restano su GitHub.
+- Sostituito Manuali > Fogli adesivi > QR Manuale TIC12 con un A4 completo da 130 adesivi ridotti: riquadro 18 x 20 mm, QR 15 x 15 mm e testo Manual ITA-ENG.
+- Il foglio usa lo stesso disegno dei QR che accompagnano le etichette TIC12. Il manuale utente TIC12 e gli altri PDF non cambiano.
+- Verificata la presenza del PDF aggiornato nell'exe e superati 54 test, inclusi password, salvataggi verso il basso, preferenze tema e dimensioni del foglio QR.
+- Conservati firmware NBIoT, navigazione guidata, icone, catalogo firmware compatto e aggiornamento automatico.
+- Nuovo eseguibile: Device_Manager_v129.exe.
+
 ## 1.128 - 05/11/2026
 
 - Nuova interfaccia guidata con foto dei sei prodotti e scelta Dispositivo, Operazione, Dati e Riepilogo.

@@ -1,7 +1,7 @@
 {
-  "version": "1.128",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v128.exe",
-  "sha256": "1ae869748810e85cefff2e255320d09b0df6c090a5c2276c80f24b10dbf0d6f1",
-  "size": 75168411,
-  "notes": "Nuova interfaccia guidata con foto prodotto, Menu precedente e pulsanti Apri dispositivo. Firmware compatti separati per dispositivo, icone di navigazione, varianti RTU/I-TIC/TIC12/Istantaneo, anteprime PDF e guide di installazione. Firmware RTU NBIoT 1.6 integrato per PIC24FJ128GL306. Conservati formati, seriali GitHub e aggiornamenti automatici."
+  "version": "1.129",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v129.exe",
+  "sha256": "89a78a3aa4b02caf3f336a878e5f60baca697b43cb80d0e87bfce9c6d81e2b1e",
+  "size": 75172550,
+  "notes": "Tema scuro predefinito. Impostazioni apre Seriali GitHub con salvataggi protetti da password, anche verso valori inferiori. Foglio QR Manuale TIC12 aggiornato: A4 con 130 adesivi ridotti 18 x 20 mm, QR 15 mm e testo Manual ITA-ENG. Conservati i formati, i firmware e l'aggiornamento automatico."
 }

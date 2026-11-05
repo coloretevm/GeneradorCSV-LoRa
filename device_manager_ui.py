@@ -32,6 +32,23 @@ GREEN = ("#168465", "#38bb94")
 RED = ("#b33c43", "#ffb4b7")
 HEADING = "Bahnschrift"
 BODY = "Segoe UI Variable Text"
+THEME_DEFAULT_POLICY = 1
+
+
+def load_guided_preferences(path):
+    preferences = {"language": "it", "theme": "dark", "theme_default_policy": THEME_DEFAULT_POLICY}
+    try:
+        saved = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return preferences
+    if not isinstance(saved, dict):
+        return preferences
+    if saved.get("language") in ("it", "es", "en"):
+        preferences["language"] = saved["language"]
+    # Migrate the v128 light default once; preserve explicit choices made afterwards.
+    if saved.get("theme_default_policy") == THEME_DEFAULT_POLICY and saved.get("theme") in ("dark", "light"):
+        preferences["theme"] = saved["theme"]
+    return preferences
 
 
 class ProductImages:
@@ -294,13 +311,9 @@ class GuidedApp:
         self.closed = False
         self.events = queue.Queue()
         self.prefs_path = Path(api._runtime_dir()) / "guided_ui_settings.json"
-        preferences = {}
-        try:
-            preferences = json.loads(self.prefs_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            pass
-        api._cur_lang[0] = preferences.get("language", "it") if preferences.get("language", "it") in ("it", "es", "en") else "it"
-        self.dark = preferences.get("theme") == "dark"
+        preferences = load_guided_preferences(self.prefs_path)
+        api._cur_lang[0] = preferences["language"]
+        self.dark = preferences["theme"] == "dark"
         ctk.set_appearance_mode("dark" if self.dark else "light")
         root.title("Device Manager - TECNIDRO")
         root.configure(fg_color=BG)
@@ -735,15 +748,30 @@ class GuidedApp:
         self.update_breadcrumb(action="settings")
         if "settings" not in self.utility_cache:
             page = ctk.CTkFrame(self.body, fg_color="transparent")
+            self.settings_title = self.label(page, self.tr("settings"), size=26, bold=True)
+            self.settings_title.pack(anchor="w", pady=(4, 6))
+            self.settings_help = self.label(page, self.tr("serial_admin_help"), size=12, color=MUTED, wrap=1080)
+            self.settings_help.pack(anchor="w", pady=(0, 8))
             tabs = ctk.CTkTabview(page, fg_color=CARD)
             tabs.pack(fill="both", expand=True)
-            for name, tab in (("settings_language", self.api.LangTab), ("settings_serial", self.api.SerialTab)):
+            self.settings_tabs = tabs
+            self.settings_tab_names = {}
+            for name, tab in (("settings_serial", self.api.SerialTab), ("settings_language", self.api.LangTab)):
                 target = tabs.add(self.tr(name))
-                tool = tab(target)
+                self.settings_tab_names[name] = self.tr(name)
+                if name == "settings_serial":
+                    tool = tab(target, registry_only=True, auto_sync=False)
+                    self.serial_settings_tool = tool
+                    if self.registry is not None:
+                        tool._load_registry_values(self.registry)
+                else:
+                    tool = tab(target)
                 tool.pack(fill="both", expand=True)
                 self.api._apply_premium_theme(tool)
+            tabs.set(self.tr("settings_serial"))
             self.utility_cache["settings"] = page
         self.display(self.utility_cache["settings"])
+        self.start_sync()
 
     def show_result(self, session, result, serial_range):
         self.active_route = ("result", session, result, serial_range)
@@ -817,6 +845,9 @@ class GuidedApp:
                     self.retry_button.pack_forget()
                     for session in self.sessions.values():
                         session.sync_serial(data)
+                    tool = getattr(self, "serial_settings_tool", None)
+                    if tool is not None and (not tool._registry_loaded or not tool._registry_user_edited):
+                        tool._load_registry_values(data)
                 else:
                     self.connection.configure(text=self.tr("serial_error"), text_color=RED)
                     self.retry_button.pack(side="left", padx=10)
@@ -832,7 +863,8 @@ class GuidedApp:
     def save_preferences(self):
         self.dark = ctk.get_appearance_mode().lower() == "dark"
         try:
-            self.prefs_path.write_text(json.dumps({"language": self.api._cur_lang[0], "theme": "dark" if self.dark else "light"}), encoding="utf-8")
+            self.prefs_path.write_text(json.dumps({"language": self.api._cur_lang[0],
+                "theme": "dark" if self.dark else "light", "theme_default_policy": THEME_DEFAULT_POLICY}), encoding="utf-8")
         except OSError:
             pass
 
@@ -851,6 +883,14 @@ class GuidedApp:
         self.previous_menu_button.configure(text=self.tr("previous_menu"))
         self.theme_button.configure(text=self.tr("theme"))
         self.retry_button.configure(text=self.tr("retry"))
+        if "settings" in self.utility_cache:
+            self.settings_title.configure(text=self.tr("settings"))
+            self.settings_help.configure(text=self.tr("serial_admin_help"))
+            for key, previous in list(self.settings_tab_names.items()):
+                current = self.tr(key)
+                if previous != current:
+                    self.settings_tabs.rename(previous, current)
+                    self.settings_tab_names[key] = current
         route = self.active_route
         if route[0] == "home":
             self.show_home()

@@ -165,6 +165,20 @@ def _draw_tic12_manuals(canvas, qr, count, top):
     return top - _manual_height(count)
 
 
+def make_tic12_manual_sheet(output_path, resource):
+    """A4 sheet of the same compact manual stickers used beside TIC12 labels."""
+    from reportlab.pdfgen import canvas as pdf_canvas
+
+    count = 130
+    assets = StickerAssets(resource)
+    canvas = pdf_canvas.Canvas(output_path, pagesize=(PAGE_W, PAGE_H), invariant=1)
+    canvas.setTitle("TIC12 - Manual ITA-ENG - adesivi 18 x 20 mm")
+    top = (PAGE_H + _manual_height(count)) / 2
+    _draw_tic12_manuals(canvas, assets.manual_qr("TIC12"), count, top)
+    canvas.save()
+    return count
+
+
 def make_tic_pdf(labels, output_path, product_name, resource, logo=None):
     from reportlab.pdfgen import canvas as pdf_canvas
 

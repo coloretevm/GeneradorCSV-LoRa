@@ -26,8 +26,8 @@ from device_manager_updater import (
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.128"
-APP_BUILD_NAME = "Device_Manager_v128"
+APP_VERSION = "1.129"
+APP_BUILD_NAME = "Device_Manager_v129"
 SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
@@ -4660,8 +4660,14 @@ class SerialTab(ctk.CTkScrollableFrame):
     PACKAGE_FILE = "Hyperterminal.zip"
     TERMINAL_ANTONIO_FILE = "APP_BLE_SERIAL__22_06_2026_wx.zip"
 
-    def __init__(self, master):
+    def __init__(self, master, registry_only=False, auto_sync=True):
         super().__init__(master, fg_color=C_BODY_BG, corner_radius=0, border_width=0, label_text="")
+        self._registry_only = registry_only
+        self._auto_sync = auto_sync
+        self._registry_loading = False
+        self._registry_user_edited = False
+        self._registry_loaded = False
+        self._family_entries = {}
         self._serial_settings = _load_serial_settings()
         self._title_lbl = None
         self._desc_lbl = None
@@ -4688,6 +4694,16 @@ class SerialTab(ctk.CTkScrollableFrame):
         self._registry_status_lbl = None
         self._status_lbl = None
         self._build()
+        for variable in self._family_vars.values():
+            variable.trace_add("write", self._mark_registry_edit)
+        if self._registry_only:
+            reached_registry = False
+            for child in self.winfo_children():
+                if child is self._repo_title_lbl.master:
+                    reached_registry = True
+                if not reached_registry:
+                    child.pack_forget()
+            self._set_registry_ready(False)
         _lang_cbs.append(self._refresh_lang)
         _register_rtu_deveui_refresh_callback(self._handle_rtu_deveui_changed)
 
@@ -4807,7 +4823,9 @@ class SerialTab(ctk.CTkScrollableFrame):
             )
             lbl.pack(side="left")
             self._family_labels[family] = lbl
-            ctk.CTkEntry(row, textvariable=self._family_vars[family], width=120).pack(side="left", padx=(4, 10))
+            entry = ctk.CTkEntry(row, textvariable=self._family_vars[family], width=120)
+            entry.pack(side="left", padx=(4, 10))
+            self._family_entries[family] = entry
             btn = ctk.CTkButton(
                 row,
                 text=t("serial_repo_save_value").format(family=_serial_family_name(family)),
@@ -4854,7 +4872,8 @@ class SerialTab(ctk.CTkScrollableFrame):
         self._registry_status_lbl = ctk.CTkLabel(self, text=t("serial_repo_ready"), text_color=C_HINT)
         self._status_lbl = ctk.CTkLabel(self, text=t("serial_status"), text_color=C_HINT)
         self._load_registry_values(_default_serial_registry())
-        self.after(150, self._auto_load_registry)
+        if self._auto_sync:
+            self.after(150, self._auto_load_registry)
 
     def _repo_field(self, key, variable, width=None, masked=False):
         row = _row(self)
@@ -4913,11 +4932,31 @@ class SerialTab(ctk.CTkScrollableFrame):
         if self._registry_status_lbl is not None:
             self._registry_status_lbl.configure(text=t("serial_repo_ready"))
 
+    def _set_registry_ready(self, ready):
+        self._registry_loaded = ready
+        state = "normal" if ready else "disabled"
+        for entry in self._family_entries.values():
+            entry.configure(state=state)
+        for button in self._family_save_buttons.values():
+            button.configure(state=state)
+        self._save_all_btn.configure(state=state)
+        self._rtu_deveui_save_btn.configure(state=state)
+
+    def _mark_registry_edit(self, *_):
+        if not self._registry_loading:
+            self._registry_user_edited = True
+
     def _load_registry_values(self, registry):
         registry = _normalize_serial_registry(registry)
-        for family in SERIAL_FAMILY_ORDER:
-            self._family_vars[family].set(str(registry["families"][family]["last_serial"]))
-        self._rtu_next_deveui_var.set(_get_next_rtu_deveui())
+        self._registry_loading = True
+        try:
+            for family in SERIAL_FAMILY_ORDER:
+                self._family_vars[family].set(str(registry["families"][family]["last_serial"]))
+            self._rtu_next_deveui_var.set(_get_next_rtu_deveui())
+        finally:
+            self._registry_loading = False
+        self._registry_user_edited = False
+        self._set_registry_ready(True)
         self._status_lbl.configure(text=t("serial_status"))
 
     def _auto_load_registry(self):

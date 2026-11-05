@@ -81,14 +81,36 @@ class LabelPdfTests(unittest.TestCase):
             self.assertAlmostEqual((y1 - y0) / MM, 15, places=4)
             self.assertGreaterEqual(y0, 10 * MM - 0.001)
 
-    def test_exact_original_download_sheets(self):
+    def test_exact_integrated_download_sheets(self):
         expected = {
             "QR_Manuale_ITIC.pdf": "37800cbc5e7f0a2f715843a6ecc581a33d694a34897f63d78c10aae861cd3a23",
-            "QR_Manuale_TIC12.pdf": "58efe4c10903a6f7a740979fef3aec5bc085e5bad1fd5f8d540eeb295539f515",
+            "QR_Manuale_TIC12.pdf": "be814e5ca1940166bf12ee496db46e9039a6e9d0f49cdc37c57a4ba4999bf5d4",
             "Sticker_batteria_15x15mm.pdf": "58338f757dd0dac26ff4300d2a9b11fa4583589fd9c61e16c6322e4be024c694",
         }
         for _, target in STICKER_SHEETS:
             self.assertEqual(hashlib.sha256((ROOT / target).read_bytes()).hexdigest(), expected[Path(target).name])
+
+    def test_tic12_compact_manual_sheet_matches_label_accessory(self):
+        reader = PdfReader(ROOT / "Manuali/Fogli adesivi/QR_Manuale_TIC12.pdf")
+        self.assertEqual(len(reader.pages), 1)
+        page = reader.pages[0]
+        self.assertAlmostEqual(float(page.mediabox.width) / MM, 210, places=4)
+        self.assertAlmostEqual(float(page.mediabox.height) / MM, 297, places=4)
+        self.assertEqual(page.extract_text().count("Manual ITA-ENG"), 130)
+        boxes = equipment_rectangles(page)
+        self.assertEqual(len(boxes), 130)
+        for x, y, width, height in boxes:
+            self.assertAlmostEqual(width / MM, 18, places=4)
+            self.assertAlmostEqual(height / MM, 20, places=4)
+            self.assertGreaterEqual(x, 10 * MM)
+            self.assertGreaterEqual(y, 10 * MM)
+            self.assertLessEqual(x + width, 200 * MM)
+            self.assertLessEqual(y + height, 287 * MM)
+        with Image.open(ROOT / "label_assets/manual_tic12.png") as qr:
+            self.assertTrue(any(image.image.tobytes() == qr.tobytes() for image in page.images))
+        matrices = [args for args, op in ContentStream(page.get_contents(), page.pdf).operations
+                    if op == b"cm" and abs(float(args[0])-15*MM) < .001 and abs(float(args[3])-15*MM) < .001]
+        self.assertEqual(len(matrices), 130)
 
     def test_tic_capacity_and_partial_last_page(self):
         for product, capacity, fw in (("TIC12", 27, "03.02.03"), ("I-TIC 1V", 21, "04.00.05")):

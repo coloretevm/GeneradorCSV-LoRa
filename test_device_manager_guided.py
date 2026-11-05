@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import generador_csv as api
 from device_manager_flow import PRODUCTS, VARIANTS, WizardSession, actions_for, firmware_for, manuals_for, NBIOT_FILE
-from device_manager_ui import ProductImages
+from device_manager_ui import ProductImages, load_guided_preferences, THEME_DEFAULT_POLICY
 from device_manager_ui_text import TEXT
 
 
@@ -286,6 +286,109 @@ class GuidedTests(unittest.TestCase):
         self.engine.copy_pic(second.cget("text"), second)
         self.assertEqual(first.cget("fg_color"), "#223145")
         self.assertEqual(second.cget("fg_color"), "#1f8f5f")
+        self.root.update_idletasks()
+        self.assertFalse(self.callback_errors, self.callback_errors)
+
+    def test_14_explicit_theme_choice_is_saved_with_migration_policy(self):
+        previous = api.ctk.get_appearance_mode()
+        try:
+            for theme in ("light", "dark"):
+                api.ctk.set_appearance_mode(theme)
+                self.engine.save_preferences()
+                saved = load_guided_preferences(self.engine.prefs_path)
+                self.assertEqual(saved["theme"], theme)
+                self.assertEqual(saved["theme_default_policy"], THEME_DEFAULT_POLICY)
+        finally:
+            api.ctk.set_appearance_mode(previous)
+
+    def test_15_settings_opens_directly_on_visible_github_counters(self):
+        self.engine.registry = copy.deepcopy(self.registry)
+        self.engine.show_settings()
+        tool = self.engine.serial_settings_tool
+        self.assertEqual(self.engine.settings_tabs.get(), self.engine.tr("settings_serial"))
+        self.assertTrue(tool._registry_only)
+        self.assertFalse(tool._auto_sync)
+        self.assertEqual(set(tool._family_save_buttons), set(api.SERIAL_FAMILY_ORDER))
+        self.assertEqual(tool._section_lbl.master.winfo_manager(), "")
+        self.assertEqual(tool._tool_title_lbl.master.winfo_manager(), "")
+        self.assertEqual(tool._repo_title_lbl.master.winfo_manager(), "pack")
+        tool._load_registry_values(self.registry)
+        for button in tool._family_save_buttons.values():
+            self.assertEqual(button.cget("state"), "normal")
+
+    def admin_context(self, store):
+        stack = ExitStack()
+        stack.enter_context(patch.object(api, "_serial_registry_fetch", side_effect=lambda _: copy.deepcopy(store["registry"])))
+        stack.enter_context(patch.object(api, "_serial_registry_fetch_cached", side_effect=lambda **_: copy.deepcopy(store["registry"])))
+        stack.enter_context(patch.object(api, "_save_serial_settings", side_effect=lambda settings: settings))
+        stack.enter_context(patch.object(api, "_ensure_serial_token", side_effect=lambda parent, settings: settings))
+        def write(settings, registry, message):
+            store["registry"] = copy.deepcopy(registry)
+            return api._set_serial_registry_cache(registry)
+        self.admin_write = stack.enter_context(patch.object(api, "_serial_registry_push", side_effect=write))
+        stack.enter_context(patch.object(api, "_notify_serial_registry_changed", side_effect=self.engine.on_registry_change))
+        return stack
+
+    def test_16_password_protects_single_save_and_accepts_lower_value(self):
+        self.engine.show_settings()
+        tool = self.engine.serial_settings_tool
+        store = {"registry": copy.deepcopy(self.registry)}
+        store["registry"]["families"]["TIC12"]["last_serial"] = 200
+        tool._load_registry_values(store["registry"])
+        self.engine.start_action("TIC12", "AC", "labels")
+        with self.admin_context(store), patch.object(api, "_prompt_serial_password", return_value=False) as password:
+            tool._family_vars["TIC12"].set("40")
+            tool._family_save_buttons["TIC12"].invoke()
+            password.assert_called_once()
+            self.admin_write.assert_not_called()
+        with self.admin_context(store), patch.object(api, "_prompt_serial_password", return_value=True) as password:
+            self.errors.reset_mock()
+            tool._family_save_buttons["TIC12"].invoke()
+            password.assert_called_once()
+            self.errors.assert_not_called()
+            self.assertEqual(store["registry"]["families"]["TIC12"]["last_serial"], 40)
+            self.assertEqual(tool._family_vars["TIC12"].get(), "40")
+            self.engine.poll_events()
+            self.assertEqual(self.engine.sessions[("TIC12", "AC", "labels")].value("tic_from"), "0041")
+
+    def test_17_password_protects_save_all_values(self):
+        self.engine.show_settings()
+        tool = self.engine.serial_settings_tool
+        store = {"registry": copy.deepcopy(self.registry)}
+        tool._load_registry_values(store["registry"])
+        for index, family in enumerate(api.SERIAL_FAMILY_ORDER, 1):
+            tool._family_vars[family].set(str(index))
+        with self.admin_context(store), patch.object(api, "_prompt_serial_password", return_value=False) as password:
+            tool._save_all_btn.invoke()
+            password.assert_called_once()
+            self.admin_write.assert_not_called()
+        with self.admin_context(store), patch.object(api, "_prompt_serial_password", return_value=True) as password:
+            self.errors.reset_mock()
+            tool._save_all_btn.invoke()
+            password.assert_called_once()
+            self.errors.assert_not_called()
+            for index, family in enumerate(api.SERIAL_FAMILY_ORDER, 1):
+                self.assertEqual(store["registry"]["families"][family]["last_serial"], index)
+
+    def test_18_background_sync_keeps_unsaved_counter_edits(self):
+        self.engine.show_settings()
+        tool = self.engine.serial_settings_tool
+        tool._load_registry_values(self.registry)
+        tool._family_vars["TIC12"].set("77")
+        incoming = copy.deepcopy(self.registry)
+        incoming["families"]["TIC12"]["last_serial"] = 201
+        self.engine.events.put(("registry", incoming))
+        self.engine.poll_events()
+        self.assertEqual(tool._family_vars["TIC12"].get(), "77")
+        tool._load_registry_values(self.registry)
+
+    def test_19_settings_tabs_follow_selected_language(self):
+        self.engine.show_settings()
+        for language in ("es", "en", "it"):
+            api._cur_lang[0] = language
+            self.engine.language_refresh()
+            self.assertIn(self.engine.tr("settings_serial"), self.engine.settings_tabs._tab_dict)
+            self.assertIn(self.engine.tr("settings_language"), self.engine.settings_tabs._tab_dict)
         self.root.update_idletasks()
         self.assertFalse(self.callback_errors, self.callback_errors)
 
