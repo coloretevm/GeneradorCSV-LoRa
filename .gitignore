@@ -14,3 +14,5 @@ github_token.txt
 serial_registry_settings.json
 update_settings.json
 rtu_deveui_settings.json
+tmp/
+*.pyc

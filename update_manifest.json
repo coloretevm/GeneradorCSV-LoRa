@@ -1,7 +1,7 @@
 {
-  "version": "1.125",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v125.exe",
-  "sha256": "ed377561fbb6415dc2d1f4a92e75d1bbc796240132735deaba88b0338db9a987",
-  "size": 69590245,
-  "notes": "Aggiornamenti in background, download verificato, avvio automatico della nuova versione ed eliminazione del vecchio exe dopo la conferma di avvio. Corretto il manifest UTF-8 BOM. Include firmware e manuali della v124."
+  "version": "1.126",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v126.exe",
+  "sha256": "f9f0420360d1233007cf2325bb34723a7b4c04e5285c8e0b372f4926c5e98212",
+  "size": 69637743,
+  "notes": "Nuove etichette I-TIC e TIC12 con QR dei manuali e un adesivo batteria separato per dispositivo. Adesivi batteria anche per RTU Bluetooth, senza Bluetooth, in tubo e LoraCont. Nuova sezione Manuali > Fogli adesivi con tre PDF integrati. Quantita corrette anche nelle pagine parziali e testi IT/ES/EN."
 }

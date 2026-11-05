@@ -16,6 +16,7 @@ from datetime import datetime
 from urllib import error as urlerror
 from urllib import request as urlrequest
 from PIL import Image
+from device_manager_labels import STICKER_SHEETS, tic_page_capacity
 from device_manager_updater import (
     download_update, launch_windows_handoff, notify_update_ready,
     read_manifest, update_filename,
@@ -24,8 +25,8 @@ from device_manager_updater import (
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.125"
-APP_BUILD_NAME = "Device_Manager_v125"
+APP_VERSION = "1.126"
+APP_BUILD_NAME = "Device_Manager_v126"
 SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
@@ -691,6 +692,11 @@ TRANSLATIONS = {
         'btn_gen_json':  'Generar archivos JSON',
         'tic12_title':  'Generador de Etiquetas TIC12',
         'itic_title':   'Generador de Etiquetas I-TIC',
+        'manuals_group_label_sheets': 'Hojas de adhesivos',
+        'sheet_manual_tic12': 'QR Manual TIC12',
+        'sheet_manual_itic': 'QR Manual I-TIC',
+        'sheet_battery': 'Adhesivo bateria 15 x 15 mm',
+        'label_page_summary': '{count} etiquetas | {pages} pagina(s) | {capacity} por pagina, con adhesivos',
         'itic_solenoid_title': 'Conexion solenoide biestable 12v DC.',
         'itic_solenoid_red': 'Cable rojo   - V1_C',
         'itic_solenoid_black': 'Cable negro  - V1_O',
@@ -1053,6 +1059,11 @@ TRANSLATIONS = {
         'serial_family_tic12': 'TIC12',
         'tic12_title':  'TIC12 Label Generator',
         'itic_title':   'I-TIC Label Generator',
+        'manuals_group_label_sheets': 'Sticker sheets',
+        'sheet_manual_tic12': 'TIC12 manual QR',
+        'sheet_manual_itic': 'I-TIC manual QR',
+        'sheet_battery': 'Battery sticker 15 x 15 mm',
+        'label_page_summary': '{count} labels | {pages} page(s) | {capacity} per page, with stickers',
         'itic_solenoid_title': '12v DC bistable solenoid wiring.',
         'itic_solenoid_red': 'Red wire    - V1_C',
         'itic_solenoid_black': 'Black wire  - V1_O',
@@ -1175,6 +1186,11 @@ TRANSLATIONS = {
         'btn_gen_json':  'Genera file JSON',
         'tic12_title':  'Generatore Etichette TIC12',
         'itic_title':   'Generatore Etichette I-TIC',
+        'manuals_group_label_sheets': 'Fogli adesivi',
+        'sheet_manual_tic12': 'QR Manuale TIC12',
+        'sheet_manual_itic': 'QR Manuale I-TIC',
+        'sheet_battery': 'Sticker batteria 15 x 15 mm',
+        'label_page_summary': '{count} etichette | {pages} pagina/e | {capacity} per pagina, con adesivi',
         'itic_solenoid_title': 'Collegamento Solenoide Bistabile 12v DC.',
         'itic_solenoid_red': 'Cavo Rosso   - V1_C',
         'itic_solenoid_black': 'Cavo Nero    - V1_O',
@@ -1607,6 +1623,7 @@ def _make_qr_image(data):
 
 
 def _make_pdf(devices, output_path, include_bluetooth=True, rtu_header=False, loraconta=False):
+    from device_manager_labels import StickerAssets, rtu_page_layout
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.pdfgen import canvas as rl_canvas
@@ -1646,6 +1663,8 @@ def _make_pdf(devices, output_path, include_bluetooth=True, rtu_header=False, lo
             grid_top = PH - MT - max(0, (AH - grid_h) / 2.0)
         ROW_H = LH/N_LR; HEADER_H = 3*ROW_H if rtu_header else 0
 
+    assets = StickerAssets(_resource)
+    N_ROWS, grid_top = rtu_page_layout(N_ROWS, LH, SLOT_H, N_COLS)
     HDR_TITLE = "LORACONT - RTU" if loraconta else "HYDRONET - RTU"
     R1 = R2 = R3 = ROW_H
     R4 = ROW_H if include_bluetooth else 0
@@ -1664,8 +1683,14 @@ def _make_pdf(devices, output_path, include_bluetooth=True, rtu_header=False, lo
     c = rl_canvas.Canvas(output_path, pagesize=A4)
     PER_PAGE = N_ROWS*N_COLS
 
+    def draw_page_stickers(count):
+        rows = (count + N_COLS - 1) // N_COLS
+        bottom = grid_top - (rows - 1) * SLOT_H - LH
+        assets.draw_batteries(c, count, bottom - 2 * mm)
+
     for idx, dev in enumerate(devices):
         if idx > 0 and idx % PER_PAGE == 0:
+            draw_page_stickers(PER_PAGE)
             c.showPage()
         pos = idx % PER_PAGE
         ri = pos // N_COLS; ci = pos % N_COLS
@@ -1749,6 +1774,8 @@ def _make_pdf(devices, output_path, include_bluetooth=True, rtu_header=False, lo
             lbl("BLUETOOTH", bt_bot, R4)
             val_c(bt_text, xv, CV+CN, bt_bot, R4, FS_BT)
 
+    if devices:
+        draw_page_stickers(len(devices) % PER_PAGE or PER_PAGE)
     c.save()
 
 
@@ -2606,172 +2633,11 @@ def _build_json(dev_eui, dev_addr, model_type, allarme_on, sendinterval=130000, 
 # PDF: Etichette TIC12 / I-TIC
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _make_tic_pdf(labels, output_path, product_name):
-    """
-    labels: list of dicts {'serial': '00001/2026', 'fw': '04.00.05'}
-    product_name: 'TIC12' or 'I-TIC 1V'
-    Generates A4 portrait PDF: 3 labels/row Ã— 15 rows = 45 labels/page.
-    Layout: logo on left | product/company/website on right | serial/FW bar bottom.
-    """
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.pdfgen import canvas as rl_canvas
-        from reportlab.lib.units import mm
-        from reportlab.lib.utils import ImageReader
-    except ImportError:
-        raise ImportError("La librerÃ­a 'reportlab' no estÃ¡ instalada.\nEjecuta:  pip install reportlab")
-
-    import io
-
-    PW, PH = A4          # 595.28 Ã— 841.89 pt  (portrait)
-
-    # â”€â”€ Margins (from Excel page setup) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    ML = 18 * mm
-    MR = 14 * mm
-    MT =  9 * mm
-    MB =  4 * mm
-
-    # â”€â”€ Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    N_COLS  = 3
-    N_ROWS  = 15
-    COL_GAP = 0.5 * mm
-    GAP_V   = 0.8 * mm
-
-    AW = PW - ML - MR
-    AH = PH - MT - MB
-
-    # Row heights (from Excel, in points)
-    R1 = 13.5   # product name  (top)
-    R2 = 12.0   # company
-    R3 = 10.5   # website
-    R4 = 12.0   # serial / FW bar  (bottom)
-    LH = R1 + R2 + R3 + R4          # 48 pt total
-
-    LABEL_W = 50 * mm
-    grid_w = N_COLS * LABEL_W + (N_COLS - 1) * COL_GAP
-    LW = LABEL_W
-    grid_h = N_ROWS * LH + (N_ROWS - 1) * GAP_V
-    grid_top = PH - MT - max(0, (AH - grid_h) / 2.0) + (4.5 * mm)
-    grid_left = ML + max(0, (AW - grid_w) / 2.0)
-
-    # Column proportions from Excel col widths: 7.0 / 9.29 / 9.86 (total 26.15)
-    CA = LW * (7.00 / 26.15)        # logo area  =  "SERIAL N." cell width
-    CB = LW * (9.29 / 26.15)        # serial value cell
-    CC = LW * (9.86 / 26.15)        # FW cell
-    TW = CB + CC                    # text section width
-
-    # Font sizes
-    FS_PROD = 10.0
-    FS_COMP =  8.0
-    FS_WEB  =  8.0
-    FS_SLBL =  6.0
-    FS_SVAL =  6.0
-    FS_FW   =  6.0
-
-    def _cy(row_bottom, row_h, fs):
-        return row_bottom + (row_h - fs) * 0.5
-
-    # â”€â”€ Prepare black version of logo for labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    logo_reader = None
-    logo_path   = _resource("logo.png")
-    if os.path.isfile(logo_path):
-        try:
-            src = Image.open(logo_path).convert("RGBA")
-            px  = list(src.getdata())
-            bpx = []
-            for r, g, b, a in px:
-                lum = 0.299*r + 0.587*g + 0.114*b
-                if lum > 210 or a < 30:          # white / transparent â†’ keep transparent
-                    bpx.append((255, 255, 255, 0))
-                else:                              # any colored pixel â†’ black
-                    bpx.append((0, 0, 0, a))
-            black_img = Image.new("RGBA", src.size)
-            black_img.putdata(bpx)
-            buf = io.BytesIO()
-            black_img.save(buf, format="PNG")
-            buf.seek(0)
-            logo_reader = ImageReader(buf)
-        except Exception:
-            logo_reader = None
-
-    c = rl_canvas.Canvas(output_path, pagesize=A4)
-    PER_PAGE = N_COLS * N_ROWS
-
-    for idx, lbl in enumerate(labels):
-        if idx > 0 and idx % PER_PAGE == 0:
-            c.showPage()
-
-        pos = idx % PER_PAGE
-        ci  = pos % N_COLS
-        ri  = pos // N_COLS
-
-        lx       = grid_left + ci * (LW + COL_GAP)
-        slot_top = grid_top - ri * (LH + GAP_V)
-        ly       = slot_top - LH
-
-        row4_bot = ly
-        row3_bot = ly + R4
-        row2_bot = ly + R4 + R3
-        row1_bot = ly + R4 + R3 + R2
-        label_top = ly + LH
-
-        serial  = lbl['serial']
-        fw_text = f"FW: {lbl['fw']}"
-
-        # â”€â”€ Borders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        c.setStrokeColorRGB(0, 0, 0)
-        c.setLineWidth(0.5)
-
-        # Outer rectangle
-        c.rect(lx, ly, LW, LH, stroke=1, fill=0)
-
-        # Vertical divider: logo | text  (full label height)
-        c.line(lx + CA, ly, lx + CA, label_top)
-
-        # Horizontal divider: header rows | bottom bar
-        c.line(lx, row3_bot, lx + LW, row3_bot)
-
-        # Vertical divider inside bottom bar: serial | FW
-        c.line(lx + CA + CB, row4_bot, lx + CA + CB, row3_bot)
-
-        # â”€â”€ Logo negro (left section, rows 1-3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        if logo_reader:
-            c.drawImage(logo_reader,
-                        lx, row3_bot,
-                        CA, (R1+R2+R3),
-                        mask='auto', preserveAspectRatio=True, anchor='c')
-
-        # â”€â”€ Text section center x â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        tx = lx + CA + TW / 2      # center of text area
-
-        c.setFillColorRGB(0, 0, 0)
-
-        # Row 1: product name
-        c.setFont("Helvetica-Bold", FS_PROD)
-        c.drawCentredString(tx, _cy(row1_bot, R1, FS_PROD), product_name)
-
-        # Row 2: company
-        c.setFont("Helvetica-Bold", FS_COMP)
-        c.drawCentredString(tx, _cy(row2_bot, R2, FS_COMP), "TECNIDRO srl - GENOVA")
-
-        # Row 3: website (centered in text section)
-        c.setFont("Helvetica", FS_WEB)
-        c.drawCentredString(tx, _cy(row3_bot, R3, FS_WEB),
-                            "w w w . t e c n i d r o . c o m")
-
-        # â”€â”€ Row 4 bottom bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        # Cell A â€” "SERIAL N."
-        c.setFont("Helvetica", FS_SLBL)
-        c.drawCentredString(lx + CA / 2, _cy(row4_bot, R4, FS_SLBL), "SERIAL N.")
-
-        # Cell B â€” serial number
-        c.setFont("Helvetica-Bold", FS_SVAL)
-        c.drawCentredString(lx + CA + CB / 2, _cy(row4_bot, R4, FS_SVAL), serial)
-
-        # Cell C â€” FW version
-        c.setFont("Helvetica-Bold", FS_FW)
-        c.drawCentredString(lx + CA + CB + CC / 2, _cy(row4_bot, R4, FS_FW), fw_text)
-
-    c.save()
+    from device_manager_labels import make_tic_pdf
+    return make_tic_pdf(
+        labels, output_path, product_name, _resource,
+        logo=_make_black_logo_reader(),
+    )
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -3730,9 +3596,12 @@ class TICLabelTab(ctk.CTkScrollableFrame):
     def _update_preview(self, *_):
         try:
             n = int(self.tic_to_var.get()) - int(self.tic_from_var.get()) + 1
-            pages = -(-n // 45)   # ceiling division
-            self._prev_lbl.configure(
-                text=f"  \u2192  {n} etiquetas  |  {pages} p\u00e1gina(s)  (45 por p\u00e1gina)")
+            if n < 1:
+                raise ValueError("Invalid label range")
+            capacity = tic_page_capacity(self._product_name)
+            pages = (n + capacity - 1) // capacity
+            self._prev_lbl.configure(text=t("label_page_summary").format(
+                count=n, pages=pages, capacity=capacity))
         except ValueError:
             self._prev_lbl.configure(text="")
 
@@ -5096,7 +4965,12 @@ class SerialTab(ctk.CTkScrollableFrame):
 
 
 class ManualsTab(ctk.CTkScrollableFrame):
+    SHEET_LABEL_KEYS = {path: key for key, path in STICKER_SHEETS}
     MANUAL_GROUPS = [
+        (
+            "manuals_group_label_sheets",
+            [path for _, path in STICKER_SHEETS],
+        ),
         (
             "manuals_group_itic",
             [
@@ -5130,6 +5004,7 @@ class ManualsTab(ctk.CTkScrollableFrame):
         self._title_lbl = None
         self._desc_lbl = None
         self._section_lbl = None
+        self._sheet_label_widgets = []
         self._group_labels = {}
         self._item_labels = []
         self._save_buttons = []
@@ -5181,9 +5056,10 @@ class ManualsTab(ctk.CTkScrollableFrame):
                 row = ctk.CTkFrame(group_frame, fg_color="transparent")
                 row.pack(fill="x", padx=14, pady=(0, 10))
                 filename = os.path.basename(relpath)
+                sheet_key = self.SHEET_LABEL_KEYS.get(relpath)
                 item = ctk.CTkLabel(
                     row,
-                    text=filename,
+                    text=t(sheet_key) if sheet_key else filename,
                     text_color=C_TEXT,
                     anchor="w",
                     justify="left",
@@ -5191,6 +5067,8 @@ class ManualsTab(ctk.CTkScrollableFrame):
                 )
                 item.pack(side="left", fill="x", expand=True)
                 self._item_labels.append(item)
+                if sheet_key:
+                    self._sheet_label_widgets.append((item, sheet_key))
                 btn = ctk.CTkButton(
                     row,
                     text=t("manuals_button_save"),
@@ -5232,6 +5110,8 @@ class ManualsTab(ctk.CTkScrollableFrame):
         self._section_lbl.configure(text=t("manuals_section_library"))
         for group_key, widget in self._group_labels.items():
             widget.configure(text=t(group_key))
+        for widget, key in self._sheet_label_widgets:
+            widget.configure(text=t(key))
         for button in self._save_buttons:
             button.configure(text=t("manuals_button_save"))
 

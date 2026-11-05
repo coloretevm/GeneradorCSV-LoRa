@@ -1,5 +1,16 @@
 ﻿# Changelog
 
+## 1.126 - 05/11/2026
+
+- I-TIC: etichette orientate tutte nello stesso verso, QR del manuale centrato sotto l'etichetta e adesivi batteria separati alla fine di ogni pagina. Fino a 21 dispositivi per A4.
+- TIC12: etichetta dispositivo, QR manuale e adesivo batteria tutti separati. QR da 15 mm in un riquadro da 18 x 20 mm con testo Manual ITA-ENG. Fino a 27 dispositivi per A4.
+- RTU Bluetooth, RTU senza Bluetooth, RTU in tubo e LoraCont: un adesivo batteria indipendente da 15 x 15 mm per ogni dispositivo presente nella pagina, mantenendo le dimensioni originali delle etichette.
+- Quantita esatte anche per fogli incompleti: 5 dispositivi producono 5 adesivi. Gli adesivi e i QR non consumano numeri seriali.
+- Nuova sezione Manuali > Fogli adesivi con i PDF originali QR Manuale TIC12, QR Manuale I-TIC e Sticker batteria, tutti inclusi nell'eseguibile.
+- Calcolo delle pagine aggiornato e nuove voci tradotte in italiano, inglese e spagnolo.
+- Verificati i modelli con fogli completi, singole etichette e pagine finali parziali. Preparato il manifest con dimensione e SHA-256 per aggiornare dalla v125.
+- Nuovo eseguibile: Device_Manager_v126.exe.
+
 ## 1.125 - 29/10/2026
 
 - Controllo aggiornamenti GitHub in background, senza bloccare la finestra.
