@@ -1,4 +1,19 @@
-﻿# Changelog
+# Changelog
+
+## 1.127 - 05/11/2026
+
+- Nuova sezione Istantaneo: selezione 100L / 1000L e modello approvato con Misuratore di Portata su due righe e campo Versione. Fino a 36 etichette da 50 mm per A4.
+- Un adesivo batteria separato da 15 x 15 mm per ogni Istantaneo stampato, anche nei fogli incompleti.
+- Istantaneo 100L e 1000L condividono lo stesso contatore: ultimo usato iniziale 0, primo seriale disponibile 0001. Aggiornamento automatico dopo la generazione e correzione con password nella scheda Serial.
+- Registro Istantaneo in serial_registry_istantaneo.json, separato per evitare che i client precedenti cancellino il nuovo contatore. I contatori esistenti non vengono azzerati.
+- LORACONT ha una sezione dedicata subito sotto RTU con Progetto, CSV, JSON ed Etichette. Rimosse le scelte LORACONT dai moduli RTU.
+- LORACONT mantiene modello 297, nessuna valvola, numvalves 0, ADC 0/1 e contatori 0/1. RTU mantiene modello 210 e le varianti senza Bluetooth, Bluetooth e tubo.
+- RTU e LORACONT conservano il contatore seriale RTU gia in uso e la serie indirizzi progetto condivisa. La separazione della navigazione non duplica i seriali esistenti.
+- Gateway: intestazione approvata con quattro celle separate da linee per logo Tecnidro, LoRaWAN / HYDRONET, Gateway LTE e simbolo batteria integrato alle dimensioni originali.
+- Caricamento dei moduli al primo utilizzo invece di costruire tutti i formulari all'avvio. Menu laterale scorrevole per raggiungere tutte le sezioni.
+- Nuove voci tradotte in italiano, inglese e spagnolo; italiano predefinito. Conservati firmware, manuali e fogli adesivi della v126.
+- Superati 27 test su interfaccia, generazione CSV/JSON/progetti, PDF completi e parziali, contatori e aggiornamenti.
+- Nuovo eseguibile: Device_Manager_v127.exe.
 
 ## 1.126 - 05/11/2026
 
@@ -141,5 +156,3 @@
 - RTU LORACONT: eliminada una fila de etiquetas por pagina y rejilla centrada en A4.
 - RTU LORACONT: logo corregido para imprimirse en negro.
 - RTU en tubo: eliminada una fila de etiquetas por pagina y rejilla centrada en A4.
-
-

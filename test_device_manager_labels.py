@@ -119,6 +119,51 @@ class LabelPdfTests(unittest.TestCase):
                     self.assertEqual(len(reader.pages), 1)
                     self.assert_footer(reader.pages[0], count, records[0])
 
+    def test_istantaneo_versions_full_and_partial_pages(self):
+        self.assertEqual(tic_page_capacity("ISTANTANEO"), 36)
+        for version in ("100L", "1000L"):
+            output = OUTPUT / ("Istantaneo_" + version + ".pdf")
+            labels = [{"serial": f"{i:04d}/2026", "fw": version} for i in range(1, 42)]
+            records = draw_with_footer_records(self.app["_make_tic_pdf"], labels, str(output), "ISTANTANEO")
+            reader = PdfReader(output)
+            self.assertEqual(len(reader.pages), 2)
+            for page, count, record in zip(reader.pages, (36, 5), records):
+                text = page.extract_text()
+                self.assertEqual(text.count("Misuratore di Portata"), count)
+                self.assertEqual(text.count("Istantaneo"), count)
+                self.assertEqual(text.count("Versione: " + version), count)
+                self.assertNotIn("FW:", text)
+                self.assertNotIn("Manual", text)
+                self.assert_footer(page, count, record)
+                boxes = equipment_rectangles(page, 49 * MM)
+                self.assertEqual(len(boxes), count)
+                for x, y, width, height in boxes:
+                    self.assertAlmostEqual(width / MM, 50, places=4)
+                    self.assertAlmostEqual(height, 48, places=4)
+
+    def test_gateway_approved_four_cell_header(self):
+        source = (ROOT / "generador_csv.py").read_text(encoding="utf-8-sig")
+        names = {"_register_pdf_font", "_wrap_pdf_text", "_fit_pdf_text", "_draw_text_in_box", "_make_gateway_pdf"}
+        nodes = [node for node in ast.parse(source).body
+                 if (isinstance(node, ast.FunctionDef) and node.name in names)
+                 or (isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id.startswith("GW_") for t in node.targets))]
+        namespace = {"os": os, "_resource": resource}
+        exec(compile(ast.Module(body=nodes, type_ignores=[]), str(ROOT / "generador_csv.py"), "exec"), namespace)
+        output = OUTPUT / "Gateway.pdf"
+        gateways = [{"model": "GW X4S LTE", "alias": f"Gateway {i}", "serial": str(i),
+                     "mac": f"0011223344{i:02X}", "dev_eui": f"70B3D57ED007{i:04X}"} for i in range(1, 7)]
+        namespace["_make_gateway_pdf"](gateways, str(output), "2026")
+        reader = PdfReader(output)
+        self.assertEqual(len(reader.pages), 2)
+        glyph = self.battery["commands"][self.battery["commands"].index("\nq\n") + 1:].encode("ascii")
+        for page, count in zip(reader.pages, (5, 1)):
+            text = page.extract_text()
+            self.assertEqual(text.count("HYDRONET"), count)
+            self.assertEqual(text.count("GATEWAY"), count)
+            self.assertEqual(text.count("GW MAC"), count)
+            self.assertEqual(page.get_contents().get_data().count(glyph), count)
+            self.assertEqual(len(page.images), 2)
+
     def test_all_rtu_models_keep_dimensions_and_match_stickers_per_page(self):
         for name, (options, capacity) in VARIANTS.items():
             with self.subTest(model=name):

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "updated_at": "2026-11-05T00:00:00Z",
+  "families": {
+    "Istantaneo": {
+      "last_serial": 0,
+      "updated_at": "2026-11-05T00:00:00Z",
+      "updated_by": "Initial v127 setup",
+      "last_count": 0,
+      "last_range": "",
+      "last_year": ""
+    }
+  }
+}

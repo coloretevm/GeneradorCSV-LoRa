@@ -72,7 +72,7 @@ def rtu_page_layout(original_rows, label_h, slot_h, columns=2):
 
 
 def _is_itic(product_name):
-    if product_name not in ("TIC12", "I-TIC 1V"):
+    if product_name not in ("TIC12", "I-TIC 1V", "ISTANTANEO"):
         raise ValueError("Unsupported equipment label: " + product_name)
     return product_name == "I-TIC 1V"
 
@@ -85,12 +85,12 @@ def _manual_height(count):
 def tic_page_capacity(product_name):
     itic = _is_itic(product_name)
     label_h = BODY_H + (TAIL_H if itic else 0)
-    top = (12 if itic else 10) * MM
+    top = (10 if product_name == "TIC12" else 12) * MM
     for count in range(45, 0, -1):
         rows = math.ceil(count / 3)
         height = rows * label_h + max(0, rows - 1) * LABEL_GAP
         height += SECTION_GAP + battery_height(count)
-        if not itic:
+        if product_name == "TIC12":
             height += SECTION_GAP + _manual_height(count)
         if height <= PAGE_H - top - BOTTOM:
             return count
@@ -120,12 +120,23 @@ def _draw_primary(canvas, label, product_name, x, y, logo, qr):
         canvas.setFont("Helvetica-Bold" if bold else "Helvetica", size)
         canvas.drawCentredString(center, bottom + (row_h - size) / 2, value)
 
-    text(product_name, tx, base + 34.5, 13.5, 10, True)
-    text("TECNIDRO srl - GENOVA", tx, base + 22.5, 12, 8, True)
-    text("w w w . t e c n i d r o . c o m", tx, base + 12, 10.5, 8)
+    if product_name == "ISTANTANEO":
+        for value, font, size, baseline in (
+            ("Misuratore di Portata", "Helvetica-Bold", 9, 39.8),
+            ("Istantaneo", "Helvetica-Bold", 9, 30.5),
+            ("TECNIDRO srl - GENOVA", "Helvetica-Bold", 7.3, 21.7),
+            ("w w w . t e c n i d r o . c o m", "Helvetica", 7, 14.2),
+        ):
+            canvas.setFont(font, size)
+            canvas.drawCentredString(tx, base + baseline, value)
+    else:
+        text(product_name, tx, base + 34.5, 13.5, 10, True)
+        text("TECNIDRO srl - GENOVA", tx, base + 22.5, 12, 8, True)
+        text("w w w . t e c n i d r o . c o m", tx, base + 12, 10.5, 8)
     text("SERIAL N.", x + ca / 2, base, 12, 6)
     text(label["serial"], x + ca + cb / 2, base, 12, 6, True)
-    text("FW: " + label["fw"], x + ca + cb + cc / 2, base, 12, 6, True)
+    prefix = "Versione: " if product_name == "ISTANTANEO" else "FW: "
+    text(prefix + label["fw"], x + ca + cb + cc / 2, base, 12, 6, True)
     if itic:
         canvas.rect(x + (LABEL_W - 12 * MM) / 2, y, 12 * MM, TAIL_H, stroke=1, fill=0)
         canvas.setFont("Helvetica-Bold", 6.5)
@@ -161,10 +172,10 @@ def make_tic_pdf(labels, output_path, product_name, resource, logo=None):
         raise ValueError("There are no equipment labels to print.")
     itic = _is_itic(product_name)
     assets = StickerAssets(resource)
-    qr = assets.manual_qr(product_name)
+    qr = assets.manual_qr(product_name) if product_name != "ISTANTANEO" else None
     capacity = tic_page_capacity(product_name)
     label_h = BODY_H + (TAIL_H if itic else 0)
-    top = PAGE_H - (12 if itic else 10) * MM
+    top = PAGE_H - (10 if product_name == "TIC12" else 12) * MM
     grid_w = 3 * LABEL_W + MM
     left = 18 * MM + (PAGE_W - 18 * MM - 14 * MM - grid_w) / 2
     canvas = pdf_canvas.Canvas(output_path, pagesize=(PAGE_W, PAGE_H))
@@ -181,7 +192,63 @@ def make_tic_pdf(labels, output_path, product_name, resource, logo=None):
         rows = math.ceil(len(page_labels) / 3)
         grid_bottom = top - rows * label_h - (rows - 1) * LABEL_GAP
         footer_top = grid_bottom - SECTION_GAP
-        if not itic:
+        if product_name == "TIC12":
             footer_top = _draw_tic12_manuals(canvas, qr, len(page_labels), footer_top) - SECTION_GAP
         assets.draw_batteries(canvas, len(page_labels), footer_top)
     canvas.save()
+
+
+def centered_text(canvas, text, font, size, center, baseline):
+    canvas.setFont(font, size)
+    canvas.drawCentredString(center, baseline, text)
+
+
+def draw_gateway_header(canvas, left, bottom, top, tecnidro, lorawan, regular, bold, resource):
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    battery = StickerAssets(resource).battery
+    glyph_commands = battery["commands"][battery["commands"].index("\nq\n") + 1:]
+    height = top - bottom
+    cuts = [left, left + 80, left + 272.25, left + 393, left + 453]
+    canvas.saveState()
+    canvas.setStrokeColorRGB(0, 0, 0)
+    canvas.setFillColorRGB(0, 0, 0)
+    canvas.setLineWidth(0.45)
+    for x in cuts[1:-1]:
+        canvas.line(x, bottom, x, top)
+
+    if tecnidro:
+        size = 54
+        canvas.drawImage(tecnidro, (cuts[0] + cuts[1] - size) / 2,
+                         bottom + (height - size) / 2, size, size,
+                         mask="auto", preserveAspectRatio=True, anchor="c")
+
+    inner_left = cuts[1] + 8
+    logo_w, logo_h = 78, 78 * 22.8 / 118
+    brand_center_y = bottom + 44
+    if lorawan:
+        canvas.drawImage(lorawan, inner_left, brand_center_y - logo_h / 2,
+                         logo_w, logo_h, mask="auto", preserveAspectRatio=True, anchor="c")
+    hydronet_x = inner_left + logo_w + 10
+    available = cuts[2] - 8 - hydronet_x
+    size = 17.5
+    while stringWidth("HYDRONET", bold, size) > available:
+        size -= 0.25
+    canvas.setFont(bold, size)
+    canvas.drawString(hydronet_x, brand_center_y - size * 0.34, "HYDRONET")
+    company_center = (cuts[1] + cuts[2]) / 2
+    centered_text(canvas, "TECNIDRO srl - GENOVA", bold, 8.5, company_center, bottom + 21)
+    centered_text(canvas, "w w w . t e c n i d r o . c o m", regular, 8.0, company_center, bottom + 8.5)
+
+    gateway_center = (cuts[2] + cuts[3]) / 2
+    centered_text(canvas, "GATEWAY", bold, 17, gateway_center, bottom + 35)
+    centered_text(canvas, "LTE", regular, 12, gateway_center, bottom + 18)
+
+    x = (cuts[3] + cuts[4] - battery["width"]) / 2
+    y = bottom + (height - battery["height"]) / 2
+    canvas.saveState()
+    canvas.translate(x - battery["source_x"], y - battery["source_y"])
+    canvas._code.append(glyph_commands)
+    canvas.restoreState()
+    canvas.restoreState()
+

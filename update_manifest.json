@@ -1,7 +1,7 @@
 {
-  "version": "1.126",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v126.exe",
-  "sha256": "f9f0420360d1233007cf2325bb34723a7b4c04e5285c8e0b372f4926c5e98212",
-  "size": 69637743,
-  "notes": "Nuove etichette I-TIC e TIC12 con QR dei manuali e un adesivo batteria separato per dispositivo. Adesivi batteria anche per RTU Bluetooth, senza Bluetooth, in tubo e LoraCont. Nuova sezione Manuali > Fogli adesivi con tre PDF integrati. Quantita corrette anche nelle pagine parziali e testi IT/ES/EN."
+  "version": "1.127",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v127.exe",
+  "sha256": "c0d84b344f8597117e31dffe2196602ce4e3655a92f94cf80f0b82da277d09f6",
+  "size": 69644119,
+  "notes": "Nuove sezioni Istantaneo 100L/1000L con numerazione condivisa da 0001 e LORACONT separata da RTU. Gateway con intestazione ordinata e simbolo batteria integrato. Un adesivo batteria per ogni Istantaneo, seriali sincronizzati su GitHub e caricamento dei moduli al primo utilizzo."
 }

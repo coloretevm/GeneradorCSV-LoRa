@@ -17,6 +17,7 @@ from urllib import error as urlerror
 from urllib import request as urlrequest
 from PIL import Image
 from device_manager_labels import STICKER_SHEETS, tic_page_capacity
+from device_manager_serials import fetch_combined, save_combined
 from device_manager_updater import (
     download_update, launch_windows_handoff, notify_update_ready,
     read_manifest, update_filename,
@@ -25,8 +26,8 @@ from device_manager_updater import (
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.126"
-APP_BUILD_NAME = "Device_Manager_v126"
+APP_VERSION = "1.127"
+APP_BUILD_NAME = "Device_Manager_v127"
 SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
@@ -45,12 +46,13 @@ DEFAULT_SERIAL_SETTINGS = {
     "token": "",
     "station_name": os.environ.get("COMPUTERNAME", "PC"),
 }
-SERIAL_FAMILY_ORDER = ("RTU", "GW", "I-TIC", "TIC12")
+SERIAL_FAMILY_ORDER = ("RTU", "GW", "I-TIC", "TIC12", "Istantaneo")
 SERIAL_FAMILY_SETTINGS = {
     "RTU": {"entry_key": "serial_family_rtu", "number_width": 5},
     "GW": {"entry_key": "serial_family_gw", "number_width": 1},
     "I-TIC": {"entry_key": "serial_family_itic", "number_width": 4},
     "TIC12": {"entry_key": "serial_family_tic12", "number_width": 4},
+    "Istantaneo": {"entry_key": "serial_family_istantaneo", "number_width": 4},
 }
 _serial_registry_cache = None
 _serial_refresh_callbacks = []
@@ -281,6 +283,9 @@ def _normalize_serial_registry(data):
     if not isinstance(data, dict):
         return registry
     families = data.get("families", {})
+    if isinstance(families, dict):
+        registry["families"].update({key: copy.deepcopy(value) for key, value in families.items()
+                                     if key not in SERIAL_FAMILY_ORDER})
     registry["updated_at"] = str(data.get("updated_at", "") or "")
     for family in SERIAL_FAMILY_ORDER:
         entry = {}
@@ -340,7 +345,7 @@ def _serial_registry_write_local(registry_path, registry):
         json.dump(_normalize_serial_registry(registry), fh, indent=2, ensure_ascii=False)
 
 
-def _serial_registry_pull(settings):
+def _serial_registry_pull_single(settings):
     api_url = str(settings.get("api_url", "")).strip()
     branch = str(settings.get("branch", "main")).strip() or "main"
     token = str(settings.get("token", "")).strip() or os.environ.get("DEVICE_MANAGER_GITHUB_TOKEN", "").strip()
@@ -351,20 +356,24 @@ def _serial_registry_pull(settings):
             if isinstance(payload, dict) and payload.get("content"):
                 content = str(payload.get("content", "")).replace("\n", "")
                 decoded = base64.b64decode(content).decode("utf-8")
-                return _set_serial_registry_cache(json.loads(decoded))
+                return _normalize_serial_registry(json.loads(decoded))
         except Exception:
             pass
     registry_url = str(settings.get("registry_url", "")).strip()
     if registry_url.lower().startswith(("http://", "https://")):
-        return _set_serial_registry_cache(_download_json(registry_url))
+        return _normalize_serial_registry(_download_json(registry_url))
 
     repo_path, _, registry_path = _serial_registry_full_path(settings)
     _git_run(repo_path, "pull", "--rebase", "origin", branch)
-    return _set_serial_registry_cache(_serial_registry_read_local(registry_path))
+    return _serial_registry_read_local(registry_path)
 
 
-def _serial_registry_push(settings, registry, message):
+def _serial_registry_push_single(settings, registry, message):
     registry = _normalize_serial_registry(registry)
+    if settings.get("registry_family") == "Istantaneo":
+        registry["families"] = {"Istantaneo": registry["families"]["Istantaneo"]}
+    else:
+        registry["families"].pop("Istantaneo", None)
     registry["updated_at"] = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
     api_url = str(settings.get("api_url", "")).strip()
     branch = str(settings.get("branch", "main")).strip() or "main"
@@ -401,7 +410,7 @@ def _serial_registry_push(settings, registry, message):
             data=json.dumps(payload).encode("utf-8"),
             method="PUT",
         )
-        return _set_serial_registry_cache(registry)
+        return _normalize_serial_registry(registry)
 
     repo_path, rel_path, registry_path = _serial_registry_full_path(settings)
     _serial_registry_write_local(registry_path, registry)
@@ -420,7 +429,18 @@ def _serial_registry_push(settings, registry, message):
         if "nothing to commit" not in detail and "nothing added to commit" not in detail:
             raise RuntimeError((commit.stderr or commit.stdout or "").strip() or "Git commit failed.")
     _git_run(repo_path, "push", "origin", branch)
-    return _set_serial_registry_cache(registry)
+    return _normalize_serial_registry(registry)
+
+
+def _serial_registry_pull(settings):
+    return _set_serial_registry_cache(fetch_combined(
+        settings, _serial_registry_pull_single, _default_serial_registry))
+
+
+def _serial_registry_push(settings, registry, message):
+    return _set_serial_registry_cache(save_combined(
+        settings, registry, message, _serial_registry_pull_single,
+        _serial_registry_push_single, _default_serial_registry))
 
 
 def _serial_registry_fetch(settings):
@@ -1351,6 +1371,31 @@ TRANSLATIONS = {
     },
 }
 
+for language, additions in {
+    "it": {
+        "istantaneo_title": "Etichette Istantaneo",
+        "lbl_istantaneo_version": "Versione:",
+        "serial_family_istantaneo": "Istantaneo",
+        "header_istantaneo_subtitle": "Versioni 100L e 1000L, con seriali condivisi e adesivi batteria.",
+        "header_loracont_subtitle": "Progetto, CSV, JSON ed etichette dedicati al contatore LORACONT.",
+    },
+    "es": {
+        "istantaneo_title": "Etiquetas Istantaneo",
+        "lbl_istantaneo_version": "Versi\u00f3n:",
+        "serial_family_istantaneo": "Istantaneo",
+        "header_istantaneo_subtitle": "Versiones 100L y 1000L, con seriales compartidos y etiquetas de bater\u00eda.",
+        "header_loracont_subtitle": "Proyecto, CSV, JSON y etiquetas para el contador LORACONT.",
+    },
+    "en": {
+        "istantaneo_title": "Istantaneo Labels",
+        "lbl_istantaneo_version": "Version:",
+        "serial_family_istantaneo": "Istantaneo",
+        "header_istantaneo_subtitle": "100L and 1000L versions with shared serials and battery stickers.",
+        "header_loracont_subtitle": "Project, CSV, JSON and labels dedicated to the LORACONT counter.",
+    },
+}.items():
+    TRANSLATIONS[language].update(additions)
+
 _cur_lang = ['it']
 _lang_cbs = []
 
@@ -1942,9 +1987,10 @@ def _apply_premium_theme(widget):
 # Tab 1: CSV
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class CSVTab(ctk.CTkScrollableFrame):
-    def __init__(self, parent):
+    def __init__(self, parent, device_kind="rtu"):
         super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
+        self._device_kind = device_kind
         self._refs = {}
         self._build()
         _lang_cbs.append(self._refresh_lang)
@@ -1972,7 +2018,7 @@ class CSVTab(ctk.CTkScrollableFrame):
 
         # â”€â”€ LoRa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_lora', self._refs)
-        self._frow('lbl_model',   "210",                              "model")
+        self._frow('lbl_model',   "297" if self._device_kind == "loracont" else "210",                              "model")
         self._frow('lbl_deveui',  "512345678B1904B1",                 "start_dev_eui")
         self._hint_da = ctk.CTkLabel(self, text=t('lbl_devaddr_i'),
                                       text_color=C_HINT,
@@ -2000,10 +2046,12 @@ class CSVTab(ctk.CTkScrollableFrame):
         _sec(self, 'sec_extra', self._refs)
         re = _row(self)
         lbl_childnumber = ctk.CTkLabel(re, text=t('lbl_childnumber'), width=LBL_W, anchor="w")
-        lbl_childnumber.pack(side="left")
+        if self._device_kind != "loracont":
+            lbl_childnumber.pack(side="left")
         self._refs['lbl_childnumber'] = lbl_childnumber
-        self.childnumber_var = tk.StringVar(value="1")
-        ctk.CTkEntry(re, textvariable=self.childnumber_var, width=100).pack(side="left", padx=(4, 18))
+        self.childnumber_var = tk.StringVar(value="0" if self._device_kind == "loracont" else "1")
+        if self._device_kind != "loracont":
+            ctk.CTkEntry(re, textvariable=self.childnumber_var, width=100).pack(side="left", padx=(4, 18))
         ctk.CTkLabel(re, text="devStatusReqInterval:", width=170, anchor="w").pack(side="left")
         self.devstatusreqinterval_var = tk.StringVar(value="0")
         ctk.CTkEntry(re, textvariable=self.devstatusreqinterval_var, width=80).pack(side="left", padx=4)
@@ -2069,13 +2117,13 @@ class CSVTab(ctk.CTkScrollableFrame):
             start_raw    = self.start_number_var.get().strip()
             start        = int(start_raw); num_width = len(start_raw)
             end          = int(self.end_number_var.get().strip())
-            model        = self.model_var.get().strip()
+            model = "297" if self._device_kind == "loracont" else self.model_var.get().strip()
             start_deveui = self.start_dev_eui_var.get().strip().upper()
             new_skey     = self.new_skey_var.get().strip().upper()
             app_skey     = self.app_skey_var.get().strip().upper()
             latitude     = self.latitude_var.get().strip()
             longitude    = self.longitude_var.get().strip()
-            childnumber  = self.childnumber_var.get().strip()
+            childnumber = "0" if self._device_kind == "loracont" else self.childnumber_var.get().strip()
             devstatusreq = self.devstatusreqinterval_var.get().strip()
             tag          = ""
             alias        = ""
@@ -2122,10 +2170,11 @@ class CSVTab(ctk.CTkScrollableFrame):
 # Tab 2: Etichette PDF
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class EtichetteTab(ctk.CTkScrollableFrame):
-    def __init__(self, parent):
+    def __init__(self, parent, device_kind="rtu"):
         super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
         self._devices = []
+        self._device_kind = device_kind
         self._refs    = {}
         self._pdf_output_auto = True
         self._last_auto_pdf_path = ""
@@ -2190,7 +2239,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
         _sec(self, 'sec_opts', self._refs)
 
         # Una sola variable â€” 4 opciones mutuamente exclusivas
-        self.label_type_var = tk.StringVar(value="nortu")
+        self.label_type_var = tk.StringVar(value="loracont" if self._device_kind == "loracont" else "nortu")
 
         OPTS = [
             ("nortu",    "RTU NO BLTE"),
@@ -2198,6 +2247,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
             ("tubo",     "RTU TUBO"),
             ("loracont", "RTU LORACONT"),
         ]
+        OPTS = [item for item in OPTS if (item[0] == "loracont") == (self._device_kind == "loracont")]
         for val, label in OPTS:
             ctk.CTkRadioButton(
                 self,
@@ -2349,7 +2399,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
             count = len(base_devices)
             if count <= 0:
                 return
-            next_start, _ = _next_available_serial("RTU", count=count, settings=_load_serial_settings(), force=True)
+            next_start, _ = _next_available_serial("RTU", count=count, settings=_load_serial_settings(), force=False)
             width = max(len(self.serial_start_var.get().strip()), SERIAL_FAMILY_SETTINGS["RTU"]["number_width"])
             self.serial_start_var.set(f"{next_start:0{width}d}")
             self._update_auto_pdf_output()
@@ -2644,9 +2694,10 @@ def _make_tic_pdf(labels, output_path, product_name):
 # Tab 4: Generador JSON
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class JSONTab(ctk.CTkScrollableFrame):
-    def __init__(self, parent):
+    def __init__(self, parent, device_kind="rtu"):
         super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
+        self._device_kind = device_kind
         self._refs = {}
         self._build()
         _lang_cbs.append(self._refresh_lang)
@@ -2681,19 +2732,21 @@ class JSONTab(ctk.CTkScrollableFrame):
         self._refs['lbl_devaddr_j'] = hint
 
         _sec(self, 'sec_json_model', self._refs)
-        self.json_model_var = tk.StringVar(value="rtu")
+        self.json_model_var = tk.StringVar(value=self._device_kind)
         self._json_model_rtu_btn = ctk.CTkRadioButton(
             self, text=t('json_model_rtu'),
             variable=self.json_model_var, value="rtu",
             font=ctk.CTkFont(size=13)
         )
-        self._json_model_rtu_btn.pack(anchor="w", padx=28, pady=6)
+        if self._device_kind == "rtu":
+            self._json_model_rtu_btn.pack(anchor="w", padx=28, pady=6)
         self._json_model_loracont_btn = ctk.CTkRadioButton(
             self, text=t('json_model_loracont'),
             variable=self.json_model_var, value="loracont",
             font=ctk.CTkFont(size=13)
         )
-        self._json_model_loracont_btn.pack(anchor="w", padx=28, pady=6)
+        if self._device_kind == "loracont":
+            self._json_model_loracont_btn.pack(anchor="w", padx=28, pady=6)
         self.json_model_var.trace_add("write", self._sync_json_model_type)
 
         _sec(self, 'sec_json_config', self._refs)
@@ -2714,6 +2767,8 @@ class JSONTab(ctk.CTkScrollableFrame):
         self._json_counters_menu.pack(side="left", padx=(4, 0))
 
         r_valvestatus = _row(self)
+        if self._device_kind == "loracont":
+            r_valvestatus.pack_forget()
         lbl_json_valvestatus = ctk.CTkLabel(r_valvestatus, text=t('lbl_json_valvestatus'), width=LBL_W, anchor="w")
         lbl_json_valvestatus.pack(side="left")
         self._refs['lbl_json_valvestatus'] = lbl_json_valvestatus
@@ -2795,6 +2850,8 @@ class JSONTab(ctk.CTkScrollableFrame):
             entry = ctk.CTkEntry(r, textvariable=var)
             entry.pack(side="left", fill="x", expand=True, padx=(4, 0))
         setattr(self, f"{attr}_entry", entry)
+        if attr == "j_motorduration" and self._device_kind == "loracont":
+            r.pack_forget()
 
     def _refresh_lang(self):
         self._lbl_title.configure(text=t('json_title'))
@@ -2938,9 +2995,10 @@ class JSONTab(ctk.CTkScrollableFrame):
 # Tab 5: Proyecto Completo
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class ProjectTab(ctk.CTkScrollableFrame):
-    def __init__(self, parent):
+    def __init__(self, parent, device_kind="rtu"):
         super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
+        self._device_kind = device_kind
         self._refs = {}
         self._last_rtu_deveui = ""
         self._build()
@@ -3021,20 +3079,25 @@ class ProjectTab(ctk.CTkScrollableFrame):
         ctk.CTkEntry(r_coords, textvariable=self.p_lon_var, width=150).pack(
             side="left", padx=4)
         r_child = _row(self)
+        if self._device_kind == "loracont":
+            r_child.pack_forget()
         lbl_childnumber = ctk.CTkLabel(r_child, text=t('lbl_childnumber'), width=LBL_W, anchor="w")
         lbl_childnumber.pack(side="left")
         self._refs['lbl_childnumber'] = lbl_childnumber
-        self.p_childnumber_var = tk.StringVar(value="1")
+        self.p_childnumber_var = tk.StringVar(value="0" if self._device_kind == "loracont" else "1")
         ctk.CTkEntry(r_child, textvariable=self.p_childnumber_var, width=120).pack(
             side="left", padx=(4, 18))
 
         # â”€â”€ Tipo de etiqueta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _sec(self, 'sec_proj_lbl', self._refs)
-        self.p_label_var = tk.StringVar(value="nortu")
-        for val, label in [("nortu",    "RTU NO BLTE"),
+        self.p_label_var = tk.StringVar(value="loracont" if self._device_kind == "loracont" else "nortu")
+        label_options = [("nortu",    "RTU NO BLTE"),
                             ("blte",     "RTU BLTE"),
                             ("tubo",     "RTU TUBO"),
-                            ("loracont", "RTU LORACONT")]:
+                            ("loracont", "LORACONT")]
+        for val, label in label_options:
+            if (val == "loracont") != (self._device_kind == "loracont"):
+                continue
             ctk.CTkRadioButton(self, text=label,
                                variable=self.p_label_var, value=val,
                                font=ctk.CTkFont(size=12)
@@ -3081,6 +3144,8 @@ class ProjectTab(ctk.CTkScrollableFrame):
         self._proj_json_counters_menu.pack(side="left", padx=(4, 0))
 
         r_proj_valvestatus = _row(self)
+        if self._device_kind == "loracont":
+            r_proj_valvestatus.pack_forget()
         lbl_proj_valvestatus = ctk.CTkLabel(r_proj_valvestatus, text=t('lbl_json_valvestatus'), width=LBL_W, anchor="w")
         lbl_proj_valvestatus.pack(side="left")
         self._refs['proj_lbl_json_valvestatus'] = lbl_proj_valvestatus
@@ -3152,6 +3217,8 @@ class ProjectTab(ctk.CTkScrollableFrame):
         self._refs[key] = lbl
         var = tk.StringVar(value=default)
         setattr(self, f"{attr}_var", var)
+        if attr == "p_motorduration" and self._device_kind == "loracont":
+            r.pack_forget()
         if w:
             ctk.CTkEntry(r, textvariable=var, width=w).pack(side="left", padx=(4, 0))
         else:
@@ -3259,7 +3326,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
             end = int(self.p_to_var.get().strip())
             if end < start:
                 return
-            next_start, _ = _next_available_serial("RTU", count=(end - start + 1), settings=_load_serial_settings(), force=True)
+            next_start, _ = _next_available_serial("RTU", count=(end - start + 1), settings=_load_serial_settings(), force=False)
             width = max(len(self.p_ser_start_var.get().strip()), SERIAL_FAMILY_SETTINGS["RTU"]["number_width"])
             self.p_ser_start_var.set(f"{next_start:0{width}d}")
             self._status_lbl.configure(
@@ -3283,7 +3350,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
             nw        = len(start_raw)
             end       = int(self.p_to_var.get().strip())
             deveui_s  = self.p_deveui_var.get().strip().upper()
-            model     = self.p_model_var.get().strip()
+            model = "297" if self._device_kind == "loracont" else self.p_model_var.get().strip()
             new_skey  = self.p_newskey_var.get().strip().upper()
             app_skey  = self.p_appskey_var.get().strip().upper()
             lat       = self.p_lat_var.get().strip()
@@ -3450,7 +3517,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
                          corner_radius=0, border_width=0, label_text="")
         self._product_name = product_name
         self._title_key    = title_key
-        self._family = "TIC12" if product_name == "TIC12" else "I-TIC"
+        self._family = {"TIC12": "TIC12", "I-TIC 1V": "I-TIC", "ISTANTANEO": "Istantaneo"}[product_name]
         self._refs = {}
         self._pdf_output_auto = True
         self._last_auto_pdf_path = ""
@@ -3501,7 +3568,16 @@ class TICLabelTab(ctk.CTkScrollableFrame):
         self._frow('lbl_tic_from', '0001',     'tic_from', w=100)
         self._frow('lbl_tic_to',   '1000',     'tic_to',   w=100)
         self._frow('lbl_tic_yr',   '2026',     'tic_yr',   w=100)
-        self._frow('lbl_tic_fw',   fw_default, 'tic_fw')
+        if self._family == "Istantaneo":
+            row = _row(self)
+            version_label = ctk.CTkLabel(row, text=t("lbl_istantaneo_version"), width=LBL_W, anchor="w")
+            version_label.pack(side="left")
+            self._refs["lbl_istantaneo_version"] = version_label
+            self.tic_fw_var = tk.StringVar(value="100L")
+            ctk.CTkComboBox(row, variable=self.tic_fw_var, values=["100L", "1000L"],
+                            state="readonly", width=150).pack(side="left", padx=(4, 0))
+        else:
+            self._frow('lbl_tic_fw', fw_default, 'tic_fw')
 
         self._prev_lbl = ctk.CTkLabel(self, text="", text_color=C_HINT,
                                        font=ctk.CTkFont(size=10))
@@ -3532,7 +3608,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
         self._status_lbl = ctk.CTkLabel(self, text="", text_color=C_HINT,
                                          font=ctk.CTkFont(size=10))
         self._status_lbl.pack(anchor="w", padx=18, pady=(0, 14))
-        for v in (self.tic_from_var, self.tic_to_var):
+        for v in (self.tic_from_var, self.tic_to_var, self.tic_fw_var):
             v.trace_add("write", self._update_auto_pdf_output)
         self._update_auto_pdf_output()
         self.after(150, self._use_next_serial_from_github)
@@ -3553,7 +3629,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
     def _refresh_lang(self):
         self._lbl_title.configure(text=t(self._title_key))
         for key, w in self._refs.items():
-            w.configure(text=t(key))
+            w.configure(text=t(key[5:]) if key.startswith("_sec_") else t(key))
         self._update_preview()
 
     def _browse_pdf(self):
@@ -3576,7 +3652,9 @@ class TICLabelTab(ctk.CTkScrollableFrame):
             width = max(len(start_raw), len(end_raw), SERIAL_FAMILY_SETTINGS[self._family]["number_width"])
             start_value = f"{start_num:0{width}d}"
             end_value = f"{end_num:0{width}d}"
-            label_name = "TIC12" if self._family == "TIC12" else "I-TIC"
+            label_name = self._family
+            if self._family == "Istantaneo":
+                label_name += " " + self.tic_fw_var.get()
             return _default_label_pdf_path(label_name, start_value, end_value)
         except Exception:
             return ""
@@ -3615,7 +3693,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
     def _use_next_serial_from_github(self):
         try:
             _, _, count = self._current_count()
-            next_start, next_end = _next_available_serial(self._family, count=count, settings=_load_serial_settings(), force=True)
+            next_start, next_end = _next_available_serial(self._family, count=count, settings=_load_serial_settings(), force=False)
             width = max(len(self.tic_from_var.get().strip()), SERIAL_FAMILY_SETTINGS[self._family]["number_width"])
             self.tic_from_var.set(f"{next_start:0{width}d}")
             self.tic_to_var.set(f"{next_end:0{width}d}")
@@ -3648,7 +3726,11 @@ class TICLabelTab(ctk.CTkScrollableFrame):
             if not year:
                 messagebox.showerror("Error", "Escribe el a\u00f1o"); return
 
-            nw = max(5, len(str(end)))
+            if start < 1:
+                raise ValueError("Il seriale iniziale deve essere almeno 1.")
+            if self._family == "Istantaneo" and fw not in ("100L", "1000L"):
+                raise ValueError("Seleziona la versione 100L o 1000L.")
+            nw = max(4 if self._family == "Istantaneo" else 5, len(str(end)))
             labels = [
                 {'serial': f"{i:0{nw}d}/{year}", 'fw': fw}
                 for i in range(start, end + 1)
@@ -3671,7 +3753,8 @@ class TICLabelTab(ctk.CTkScrollableFrame):
                 return
 
             n = len(labels)
-            pages = -(-n // 45)
+            capacity = tic_page_capacity(self._product_name)
+            pages = -(-n // capacity)
             self._status_lbl.configure(text=t("serial_repo_reserved").format(
                 family=_serial_family_name(self._family),
                 start=f"{start:0{nw}d}",
@@ -3791,6 +3874,7 @@ def _draw_text_in_box(canvas_obj, text, x, y, width, height, font_name, font_siz
 
 
 def _make_gateway_pdf(gateways, output_path, serial_year):
+    from device_manager_labels import draw_gateway_header
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.utils import ImageReader
@@ -3854,37 +3938,8 @@ def _make_gateway_pdf(gateways, output_path, serial_year):
         c.line(x1, bottom, x1, table_top)
         c.line(x2, bottom, x2, table_top)
 
-        if tecnidro_img:
-            c.drawImage(
-                tecnidro_img,
-                left + 18.0,
-                top - 60.0,
-                width=50.0,
-                height=50.0,
-                mask="auto",
-                preserveAspectRatio=True,
-                anchor="sw",
-            )
-        if lorawan_img:
-            c.drawImage(
-                lorawan_img,
-                left + 96.0,
-                top - 44.0,
-                width=118.0,
-                height=22.8,
-                mask="auto",
-                preserveAspectRatio=True,
-                anchor="sw",
-            )
-
-        _draw_text_in_box(c, "HYDRONET", left + 176.0, top - 50.0, 172.0, 26.0,
-                          bold_font, 20, align="left")
-        _draw_text_in_box(c, "GATEWAY LTE", x2, top - row_edges[2], GW_COL_WIDTHS_PT[2], GW_ROW_HEIGHTS_PT[1],
-                          bold_font, 18, align="center")
-        _draw_text_in_box(c, "TECNIDRO srl - GENOVA", left, top - row_edges[4], GW_LABEL_WIDTH_PT,
-                          GW_ROW_HEIGHTS_PT[3], bold_font, 9.5, align="center", valign="top")
-        _draw_text_in_box(c, "w w w . t e c n i d r o . c o m", left, top - row_edges[5], GW_LABEL_WIDTH_PT,
-                          GW_ROW_HEIGHTS_PT[4], regular_font, 9.5, align="center", valign="top")
+        draw_gateway_header(c, left, table_top, border_top, tecnidro_img,
+                            lorawan_img, regular_font, bold_font, _resource)
 
         label_font = 10
         value_font = 10
@@ -4171,7 +4226,7 @@ class GatewayTab(ctk.CTkScrollableFrame):
         return serials
 
     def _next_gateway_serial(self):
-        repo_last = _next_available_serial("GW", settings=_load_serial_settings(), force=True)[0] - 1
+        repo_last = _next_available_serial("GW", settings=_load_serial_settings(), force=False)[0] - 1
         local_serials = self._gateway_serial_numbers()
         next_value = max([repo_last, *local_serials] if local_serials else [repo_last]) + 1
         width = max(SERIAL_FAMILY_SETTINGS["GW"]["number_width"], len(str(next_value)))
@@ -5142,10 +5197,18 @@ class App:
         self._nav_buttons = {}
         self._views = {}
         self._rtu_views = {}
+        self._workspace_views = {"RTU": self._rtu_views, "LORACONT": {}}
+        self._workspace_selection = {"RTU": "Proyecto", "LORACONT": "Proyecto"}
+        self._tab_factories = {}
+        self._loaded_tabs = set()
+        self._section_factories = {}
+        self._loaded_sections = set()
         self._active_section = None
         self._active_rtu_section = "Proyecto"
         self._section_meta = {
             "RTU": ("RTU Workspace", "CSV, JSON, progetto completo ed etichette in un unico flusso."),
+            "LORACONT": ("LORACONT", "header_loracont_subtitle"),
+            "Istantaneo": ("Istantaneo", "header_istantaneo_subtitle"),
             "GW": ("Gateway", "Gestione etichette Gateway e strumenti rapidi per X4S LTE."),
             "I-TIC": ("I-TIC", "Etichette e seriali per dispositivi I-TIC."),
             "TIC12": ("TIC12", "Etichette, seriali e stampa per TIC12."),
@@ -5189,9 +5252,9 @@ class App:
             text_color=C_MUTED,
         ).pack(anchor="w", pady=(2, 0))
 
-        nav_wrap = ctk.CTkFrame(sidebar, fg_color="transparent")
-        nav_wrap.pack(fill="x", padx=14, pady=(4, 10))
-        for name in ("RTU", "GW", "I-TIC", "TIC12", "FW Version", "Serial", "Manuales", "Language"):
+        nav_wrap = ctk.CTkScrollableFrame(sidebar, fg_color="transparent", label_text="")
+        nav_wrap.pack(fill="both", expand=True, padx=10, pady=(4, 10))
+        for name in ("RTU", "LORACONT", "GW", "I-TIC", "TIC12", "Istantaneo", "FW Version", "Serial", "Manuales", "Language"):
             btn = ctk.CTkButton(
                 nav_wrap,
                 text=name,
@@ -5221,7 +5284,7 @@ class App:
         main_area = ctk.CTkFrame(workspace, fg_color="transparent")
         main_area.pack(side="left", fill="both", expand=True, padx=(0, 14), pady=14)
 
-        topbar = ctk.CTkFrame(main_area, fg_color=C_HDR_BG, corner_radius=22, height=92, border_width=1, border_color=C_CARD_BORDER)
+        topbar = ctk.CTkFrame(main_area, fg_color=C_HDR_BG, corner_radius=22, height=132, border_width=1, border_color=C_CARD_BORDER)
         topbar.pack(fill="x", pady=(0, 12))
         topbar.pack_propagate(False)
 
@@ -5230,12 +5293,14 @@ class App:
         self._header_title = ctk.CTkLabel(
             title_box,
             text="",
-            font=ctk.CTkFont(size=28, weight="bold"),
+            font=ctk.CTkFont(size=24, weight="bold"),
             text_color=C_HDR_TEXT,
         )
         self._header_title.pack(anchor="w")
         self._header_subtitle = ctk.CTkLabel(
             title_box,
+            wraplength=350,
+            justify="left",
             text="",
             font=ctk.CTkFont(size=12),
             text_color=C_HINT,
@@ -5269,29 +5334,32 @@ class App:
         content_host = ctk.CTkFrame(main_area, fg_color=C_CARD_BG, corner_radius=24, border_width=1, border_color=C_CARD_BORDER)
         content_host.pack(fill="both", expand=True)
 
-        for section in ("RTU", "GW", "I-TIC", "TIC12", "FW Version", "Serial", "Manuales", "Language"):
+        for section in ("RTU", "LORACONT", "GW", "I-TIC", "TIC12", "Istantaneo", "FW Version", "Serial", "Manuales", "Language"):
             frame = ctk.CTkFrame(content_host, fg_color="transparent")
             self._views[section] = frame
 
-        # RTU workspace with subnavigation
-        rtu_shell = self._views["RTU"]
-        self._rtu_content_host = ctk.CTkFrame(rtu_shell, fg_color="transparent")
-        self._rtu_content_host.pack(fill="both", expand=True)
-        for sub in ("Proyecto", "CSV", "JSON", "Etichette"):
-            subframe = ctk.CTkFrame(self._rtu_content_host, fg_color="transparent")
-            self._rtu_views[sub] = subframe
-        ProjectTab(self._rtu_views["Proyecto"]).pack(fill="both", expand=True)
-        CSVTab(self._rtu_views["CSV"]).pack(fill="both", expand=True)
-        JSONTab(self._rtu_views["JSON"]).pack(fill="both", expand=True)
-        EtichetteTab(self._rtu_views["Etichette"]).pack(fill="both", expand=True)
+        # Construct each tool on first use, not every form during application startup.
+        for workspace_name, subviews in self._workspace_views.items():
+            kind = "loracont" if workspace_name == "LORACONT" else "rtu"
+            for sub, tab_class in (("Proyecto", ProjectTab), ("CSV", CSVTab),
+                                   ("JSON", JSONTab), ("Etichette", EtichetteTab)):
+                subframe = ctk.CTkFrame(self._views[workspace_name], fg_color="transparent")
+                subviews[sub] = subframe
+                self._tab_factories[(workspace_name, sub)] = (
+                    lambda cls=tab_class, frame=subframe, device_kind=kind:
+                        cls(frame, device_kind=device_kind)
+                )
 
-        GatewayTab(self._views["GW"]).pack(fill="both", expand=True)
-        TICLabelTab(self._views["I-TIC"], product_name="I-TIC 1V", title_key="itic_title").pack(fill="both", expand=True)
-        TICLabelTab(self._views["TIC12"], product_name="TIC12", title_key="tic12_title").pack(fill="both", expand=True)
-        FWVersionTab(self._views["FW Version"]).pack(fill="both", expand=True)
-        SerialTab(self._views["Serial"]).pack(fill="both", expand=True)
-        ManualsTab(self._views["Manuales"]).pack(fill="both", expand=True)
-        LangTab(self._views["Language"]).pack(fill="both", expand=True)
+        self._section_factories = {
+            "GW": lambda frame: GatewayTab(frame),
+            "I-TIC": lambda frame: TICLabelTab(frame, product_name="I-TIC 1V", title_key="itic_title"),
+            "TIC12": lambda frame: TICLabelTab(frame, product_name="TIC12", title_key="tic12_title"),
+            "Istantaneo": lambda frame: TICLabelTab(frame, product_name="ISTANTANEO", title_key="istantaneo_title"),
+            "FW Version": lambda frame: FWVersionTab(frame),
+            "Serial": lambda frame: SerialTab(frame),
+            "Manuales": lambda frame: ManualsTab(frame),
+            "Language": lambda frame: LangTab(frame),
+        }
 
         self._status_bar = ctk.CTkFrame(main_area, corner_radius=18, height=34, fg_color=C_BAR_BG, border_width=1, border_color=C_CARD_BORDER)
         self._status_bar.pack(fill="x", pady=(12, 0))
@@ -5343,20 +5411,32 @@ class App:
         self._header_title.configure(text=title)
         self._header_subtitle.configure(text=subtitle)
         self._update_rtu_deveui_header()
-        if section_name == "RTU":
-            self._rtu_segment.pack(side="right", padx=22, pady=26)
-            self._show_rtu_section(self._active_rtu_section)
+        if section_name in self._workspace_views:
+            self._rtu_segment.pack(side="right", padx=16, pady=26)
+            self._show_rtu_section(self._workspace_selection[section_name])
         else:
             self._rtu_segment.pack_forget()
+            if section_name not in self._loaded_sections:
+                tool = self._section_factories[section_name](self._views[section_name])
+                tool.pack(fill="both", expand=True)
+                self._loaded_sections.add(section_name)
+                _apply_premium_theme(tool)
 
     def _show_rtu_section(self, section_name):
-        self._active_rtu_section = section_name
-        if self._active_section != "RTU":
+        workspace = self._active_section
+        if workspace not in self._workspace_views:
             return
-        for name, frame in self._rtu_views.items():
+        self._workspace_selection[workspace] = section_name
+        for frame in self._workspace_views[workspace].values():
             frame.pack_forget()
-        frame = self._rtu_views.get(section_name)
+        frame = self._workspace_views[workspace].get(section_name)
         if frame is not None:
+            key = (workspace, section_name)
+            if key not in self._loaded_tabs:
+                tool = self._tab_factories[key]()
+                tool.pack(fill="both", expand=True)
+                self._loaded_tabs.add(key)
+                _apply_premium_theme(tool)
             frame.pack(fill="both", expand=True)
         self._rtu_segment_var.set(section_name)
 
@@ -5381,7 +5461,7 @@ class App:
         self.root.after(0, self._update_rtu_deveui_header)
 
     def _update_rtu_deveui_header(self):
-        if self._active_section == "RTU":
+        if self._active_section in self._workspace_views:
             self._rtu_next_deveui_lbl.configure(
                 text=f"{t('rtu_next_deveui_label')}: {_get_next_rtu_deveui()}"
             )
