@@ -1,8 +1,8 @@
 # Device Manager - TECNIDRO
 
-Versione pubblicata: **1.127** (05/11/2026).
+Versione pubblicata: **1.128** (05/11/2026).
 
-[Scarica Device_Manager_v127.exe](https://github.com/coloretevm/GeneradorCSV-LoRa/raw/refs/heads/main/downloads/Device_Manager_v127.exe)
+[Scarica Device_Manager_v128.exe](https://github.com/coloretevm/GeneradorCSV-LoRa/raw/refs/heads/main/downloads/Device_Manager_v128.exe)
 
 ## Aggiornamenti automatici
 
@@ -12,7 +12,20 @@ Il manifest `update_manifest.json` contiene versione, URL del download, dimensio
 
 Chi usa la v125 puo aggiornare alla v127 dal programma. Per una prima installazione si puo scaricare direttamente la v127.
 
-## Novita v127
+## Interfaccia guidata v128
+
+La schermata iniziale presenta RTU, LORACONT, Gateway, I-TIC, TIC12 e Istantaneo con le immagini prodotto. Apri dispositivo avvia il percorso e Menu precedente torna al menu padre mantenendo i dati della lavorazione.
+
+- RTU e LORACONT: progetto completo oppure CSV Nodi, JSON ed etichette indipendenti, firmware contestuali e guide di installazione LORACONT.
+- RTU NBIoT: soltanto firmware 1.6 del 02/11/2026 per PIC24FJ128GL306. CSV, JSON ed etichette restano in attesa.
+- Gateway: etichette e copia del comando di spegnimento, senza firmware o manuali.
+- I-TIC REV6/REV4 e TIC12 AC/DC: etichette, firmware filtrati e manuali utente.
+- Istantaneo Nuovo/Vecchio: etichette e firmware, senza manuali.
+- Anteprima PDF prima di generare e documenti in una finestra dedicata. Le anteprime non usano seriali.
+- Biblioteca firmware compatta, separata per dispositivo, e accessi con icone a Firmware, Manuali, Terminali e Impostazioni.
+- Temi chiaro/scuro, italiano predefinito e traduzioni ES/EN. La scelta lingua e tema puo essere conservata localmente; i contatori restano su GitHub.
+
+## Numerazione esistente
 
 LORACONT ha ora una sezione dedicata subito sotto RTU, con Progetto, CSV, JSON ed Etichette. Non e piu una scelta dei moduli RTU. Per mantenere la numerazione esistente, RTU e LORACONT usano ancora il medesimo contatore RTU.
 
@@ -33,17 +46,21 @@ La sezione Istantaneo genera etichette 100L o 1000L, con un contatore unico cond
 - `generador_csv.py`: applicazione desktop, etichette, CSV, JSON, firmware e manuali.
 - `device_manager_updater.py`: download verificato e sostituzione del programma su Windows.
 - `device_manager_labels.py`: layout etichette e conteggio degli adesivi per pagina.
+- `device_manager_ui.py`: nuova interfaccia guidata, navigazione e libreria contestuale.
+- `device_manager_flow.py`: percorsi, varianti e collegamento ai generatori esistenti.
+- `device_manager_ui_text.py` e `device_manager_icons.py`: traduzioni e icone dell'interfaccia.
+- `device_manager_preview.py`: anteprime e lettura PDF offline.
 - `device_manager_serials.py`: sincronizzazione del contatore Istantaneo isolato dai client precedenti.
 - `label_assets/`: QR originali e simbolo batteria vettoriale alle dimensioni originali.
 - `test_device_manager_updater.py`: test del manifest e dei download, compresi i casi di errore.
 - `fw/` e `manuali/`: file firmware e manuali.
-- `downloads/Device_Manager_v127.exe`: eseguibile pubblicato.
+- `downloads/Device_Manager_v128.exe`: eseguibile pubblicato.
 - `CHANGELOG.md`: modifiche pubblicate.
 
 La v125 include i firmware LoraCont 1.0.6 INFO/TRACE, il manuale TIC12 aggiornato, le sei varianti RST per Instantaneo Nuovo e Terminal Antonio del 22/06/2026.
 
 ## Sorgenti e credenziali
 
-Dipendenze principali: Python, CustomTkinter, Pillow, ReportLab e qrcode. Per generare un exe si usa PyInstaller, includendo le risorse firmware, manuali, ZIP e immagini. I file `serial_token.txt` e le configurazioni locali delle credenziali sono esclusi dal versionamento dei sorgenti.
+Dipendenze principali: Python, CustomTkinter, Pillow, ReportLab, qrcode e pypdfium2 per le anteprime. Vedere requirements_device_manager.txt. Per generare un exe si usa PyInstaller, includendo le risorse firmware, manuali, ZIP e immagini. I file `serial_token.txt` e le configurazioni locali delle credenziali sono esclusi dal versionamento dei sorgenti.
 
-Eseguire i test con `python -m unittest test_device_manager_updater test_device_manager_labels test_device_manager_serials test_device_manager_ui -v`. Per i test PDF serve anche `pypdf`.
+Eseguire i test con `python -m unittest test_device_manager_updater test_device_manager_labels test_device_manager_serials test_device_manager_ui test_device_manager_guided -v`. Per i test PDF serve anche `pypdf`.

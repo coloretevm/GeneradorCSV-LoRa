@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.128 - 05/11/2026
+
+- Nuova interfaccia guidata con foto dei sei prodotti e scelta Dispositivo, Operazione, Dati e Riepilogo.
+- Pulsante Menu precedente sempre visibile, ritorno ai menu senza perdere i dati e pulsanti Apri dispositivo nelle schede prodotto.
+- Ripristinate le icone Firmware, Manuali, Terminali e Impostazioni. Temi chiaro/scuro e testi italiano, spagnolo e inglese.
+- RTU: varianti Bluetooth, senza Bluetooth, in tubo e NBIoT. RTU e LORACONT mantengono progetto completo oppure CSV Nodi, JSON ed etichette separati, senza Strumenti avanzati.
+- NBIoT: disponibile soltanto Prepara firmware, PIC24FJ128GL306, file pic24_Radio_NBIOT_2CH.Xver_1.6_02.11.2026.production.hex integrato e verificato.
+- Gateway: solo etichette e comando di spegnimento X4S LTE da copiare; nessuna esecuzione automatica del comando.
+- I-TIC: scelta REV6/REV4, etichette, firmware della revisione selezionata e manuali utente.
+- TIC12: scelta AC/DC, etichette, firmware filtrati AC/DC e manuale utente.
+- Istantaneo: scelta Nuovo/Vecchio, etichette 100L/1000L e relativi firmware; nessuna voce manuale.
+- LORACONT: documentazione denominata Guida di installazione, con le due guide di collegamento esistenti.
+- Firmware riorganizzati per dispositivo in righe compatte con nome, versione e PIC. La biblioteca usa due colonne quando lo spazio lo permette; verde soltanto il pulsante PIC cliccato.
+- Anteprima PDF integrata prima della generazione, senza consumare seriali; finestra dedicata per aprire i documenti e salvare una copia. Visualizzatore PDF incluso nell'exe.
+- Conservati i generatori e i formati CSV/JSON/PDF, gli adesivi batteria e QR, i contatori GitHub e l'aggiornamento automatico. I registri esistenti non vengono modificati dalla pubblicazione.
+- Lettura iniziale dei seriali in background, apertura dei moduli solo al bisogno e dimensioni finestra adattate alla scala DPI dello schermo.
+- Nuove prove automatiche su percorsi, varianti, firmware, ritorno ai menu, mantenimento dei dati, icone, traduzioni e anteprime senza prenotazione dei seriali.
+- Nuovo eseguibile: Device_Manager_v128.exe.
+
 ## 1.127 - 05/11/2026
 
 - Nuova sezione Istantaneo: selezione 100L / 1000L e modello approvato con Misuratore di Portata su due righe e campo Versione. Fino a 36 etichette da 50 mm per A4.

@@ -26,8 +26,8 @@ from device_manager_updater import (
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.127"
-APP_BUILD_NAME = "Device_Manager_v127"
+APP_VERSION = "1.128"
+APP_BUILD_NAME = "Device_Manager_v128"
 SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
@@ -2152,12 +2152,14 @@ class CSVTab(ctk.CTkScrollableFrame):
                               "",alias,FIXED_GROUP,"","",childnumber,devstatusreq])
             with open(output_file,"w",newline="",encoding="utf-8") as f:
                 w = csv.writer(f, delimiter=";"); w.writerow(header); w.writerows(rows)
-            messagebox.showinfo("Ã‰xito",
-                f"CSV generado correctamente.\n\n"
-                f"  Dispositivos: {num_devices}\n"
-                f"  DevEUI desde: {start_deveui}\n"
-                f"  DevEUI hasta: {format(deveui_int+num_devices-1,'016X')}\n\n"
-                f"Archivo:\n{output_file}")
+            if not getattr(self, "_guided_mode", False):
+                messagebox.showinfo("Ã‰xito",
+                    f"CSV generado correctamente.\n\n"
+                    f"  Dispositivos: {num_devices}\n"
+                    f"  DevEUI desde: {start_deveui}\n"
+                    f"  DevEUI hasta: {format(deveui_int+num_devices-1,'016X')}\n\n"
+                    f"Archivo:\n{output_file}")
+            return {"files": [output_file], "count": num_devices}
         except ValueError as e:
             messagebox.showerror("Error de valor", f"Verifica campos numÃ©ricos/hex.\n\nDetalle: {e}")
         except PermissionError:
@@ -2170,7 +2172,7 @@ class CSVTab(ctk.CTkScrollableFrame):
 # Tab 2: Etichette PDF
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class EtichetteTab(ctk.CTkScrollableFrame):
-    def __init__(self, parent, device_kind="rtu"):
+    def __init__(self, parent, device_kind="rtu", auto_sync=True):
         super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
         self._devices = []
@@ -2178,6 +2180,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
         self._refs    = {}
         self._pdf_output_auto = True
         self._last_auto_pdf_path = ""
+        self._auto_sync = auto_sync
         self._build()
         _lang_cbs.append(self._refresh_lang)
         _register_serial_refresh_callback(self._handle_serial_registry_changed)
@@ -2281,7 +2284,8 @@ class EtichetteTab(ctk.CTkScrollableFrame):
         for var in (self.m_from_var, self.m_to_var, self.serial_start_var, self.label_type_var):
             var.trace_add("write", self._update_auto_pdf_output)
         self._update_auto_pdf_output()
-        self.after(150, self._use_next_serial_from_github)
+        if self._auto_sync:
+            self.after(150, self._use_next_serial_from_github)
 
     # â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _frow(self, key, default, attr, w=None):
@@ -2460,12 +2464,14 @@ class EtichetteTab(ctk.CTkScrollableFrame):
                 year=sy,
             ))
             _notify_serial_registry_changed()
-            messagebox.showinfo("Ã‰xito",
-                f"PDF generado correctamente.\n\n"
-                f"  Etiquetas:  {n}\n"
-                f"  Primera:    {devices[0]['name']}  |  {devices[0]['serial']}\n"
-                f"  Ãšltima:     {devices[-1]['name']}  |  {devices[-1]['serial']}\n\n"
-                f"Archivo:\n{of}")
+            if not getattr(self, "_guided_mode", False):
+                messagebox.showinfo("Ã‰xito",
+                    f"PDF generado correctamente.\n\n"
+                    f"  Etiquetas:  {n}\n"
+                    f"  Primera:    {devices[0]['name']}  |  {devices[0]['serial']}\n"
+                    f"  Ãšltima:     {devices[-1]['name']}  |  {devices[-1]['serial']}\n\n"
+                    f"Archivo:\n{of}")
+            return {"files": [of], "count": n}
         except ValueError as e:
             messagebox.showerror("Error de valor", str(e))
         except ImportError as e:
@@ -2482,7 +2488,7 @@ class EtichetteTab(ctk.CTkScrollableFrame):
 class LangTab(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color=C_BODY_BG)
-        self._is_dark = True
+        self._is_dark = ctk.get_appearance_mode().lower() == "dark"
         self._update_settings = _load_update_settings()
         self._build()
         _lang_cbs.append(self._refresh_lang)
@@ -2528,7 +2534,7 @@ class LangTab(ctk.CTkFrame):
             font=ctk.CTkFont(size=13),
             height=42, width=300,
         )
-        self._theme_seg.set(t('theme_dark'))
+        self._theme_seg.set(t('theme_dark') if self._is_dark else t('theme_light'))
         self._theme_seg.pack()
 
         ctk.CTkFrame(self, height=1, fg_color=C_DIV, width=420).pack(pady=(28, 22))
@@ -2974,14 +2980,16 @@ class JSONTab(ctk.CTkScrollableFrame):
 
             self._status_lbl.configure(
                 text=f"âœ“  {num_devices} archivos JSON generados  â†’  {folder}")
-            messagebox.showinfo("Ã‰xito",
-                f"JSON generados correctamente.\n\n"
-                f"  Dispositivos:   {num_devices}\n"
-                f"  VÃ¡lvula:        {'Valvola Motorizzata' if valve=='motorizzata' else 'ELBA'}\n"
-                f"  Allarme Sport.: {'ON' if allarme else 'OFF'}\n"
-                f"  DevEUI desde:   {deveui_s}\n"
-                f"  DevEUI hasta:   {format(deveui_int+num_devices-1,'016X')}\n\n"
-                f"Carpeta:\n{folder}")
+            if not getattr(self, "_guided_mode", False):
+                messagebox.showinfo("Ã‰xito",
+                    f"JSON generados correctamente.\n\n"
+                    f"  Dispositivos:   {num_devices}\n"
+                    f"  VÃ¡lvula:        {'Valvola Motorizzata' if valve=='motorizzata' else 'ELBA'}\n"
+                    f"  Allarme Sport.: {'ON' if allarme else 'OFF'}\n"
+                    f"  DevEUI desde:   {deveui_s}\n"
+                    f"  DevEUI hasta:   {format(deveui_int+num_devices-1,'016X')}\n\n"
+                    f"Carpeta:\n{folder}")
+            return {"files": [folder], "count": num_devices}
 
         except ValueError as e:
             messagebox.showerror("Error de valor", f"Verifica campos numÃ©ricos/hex.\n\nDetalle: {e}")
@@ -2995,12 +3003,13 @@ class JSONTab(ctk.CTkScrollableFrame):
 # Tab 5: Proyecto Completo
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class ProjectTab(ctk.CTkScrollableFrame):
-    def __init__(self, parent, device_kind="rtu"):
+    def __init__(self, parent, device_kind="rtu", auto_sync=True):
         super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
         self._device_kind = device_kind
         self._refs = {}
         self._last_rtu_deveui = ""
+        self._auto_sync = auto_sync
         self._build()
         self._apply_next_rtu_deveui(_get_next_rtu_deveui())
         _lang_cbs.append(self._refresh_lang)
@@ -3207,7 +3216,8 @@ class ProjectTab(ctk.CTkScrollableFrame):
         self._status_lbl.pack(anchor="w", padx=18, pady=(0, 16))
 
         self._update_struct()
-        self.after(150, self._use_next_serial_from_github)
+        if self._auto_sync:
+            self.after(150, self._use_next_serial_from_github)
 
     # â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _frow(self, key, default, attr, w=None):
@@ -3486,17 +3496,19 @@ class ProjectTab(ctk.CTkScrollableFrame):
                 ))
             _set_next_rtu_deveui(_advance_rtu_deveui(deveui_s))
             _notify_serial_registry_changed()
-            messagebox.showinfo("Ã‰xito",
-                f"Proyecto generado correctamente.\n\n"
-                f"  {proj_name}/\n"
-                f"  CSV/       -> {proj_name}.csv\n"
-                f"  JSON/      -> {num_devices} archivos .JSON\n"
-                f"  etichette/ -> {proj_name}.pdf\n\n"
-                f"  Dispositivos:  {num_devices}\n"
-                f"  VÃ¡lvula:       {'Motorizzata' if valve=='motorizzata' else 'ELBA'}\n"
-                f"  Allarme:       {'ON' if allarme else 'OFF'}\n"
-                f"  Etiqueta:      {label_opt.upper()}\n\n"
-                f"Carpeta:\n{proj_dir}")
+            if not getattr(self, "_guided_mode", False):
+                messagebox.showinfo("Ã‰xito",
+                    f"Proyecto generado correctamente.\n\n"
+                    f"  {proj_name}/\n"
+                    f"  CSV/       -> {proj_name}.csv\n"
+                    f"  JSON/      -> {num_devices} archivos .JSON\n"
+                    f"  etichette/ -> {proj_name}.pdf\n\n"
+                    f"  Dispositivos:  {num_devices}\n"
+                    f"  VÃ¡lvula:       {'Motorizzata' if valve=='motorizzata' else 'ELBA'}\n"
+                    f"  Allarme:       {'ON' if allarme else 'OFF'}\n"
+                    f"  Etiqueta:      {label_opt.upper()}\n\n"
+                    f"Carpeta:\n{proj_dir}")
+            return {"files": [csv_path, json_dir, pdf_path], "count": num_devices}
 
         except ValueError as e:
             messagebox.showerror("Error de valor", f"Verifica campos numÃ©ricos/hex.\n\nDetalle: {e}")
@@ -3512,7 +3524,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
 # Tab: Etichette TIC12 / I-TIC
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class TICLabelTab(ctk.CTkScrollableFrame):
-    def __init__(self, parent, product_name, title_key):
+    def __init__(self, parent, product_name, title_key, auto_sync=True):
         super().__init__(parent, fg_color=C_BODY_BG,
                          corner_radius=0, border_width=0, label_text="")
         self._product_name = product_name
@@ -3521,6 +3533,7 @@ class TICLabelTab(ctk.CTkScrollableFrame):
         self._refs = {}
         self._pdf_output_auto = True
         self._last_auto_pdf_path = ""
+        self._auto_sync = auto_sync
         self._build()
         _lang_cbs.append(self._refresh_lang)
         _register_serial_refresh_callback(self._handle_serial_registry_changed)
@@ -3611,7 +3624,8 @@ class TICLabelTab(ctk.CTkScrollableFrame):
         for v in (self.tic_from_var, self.tic_to_var, self.tic_fw_var):
             v.trace_add("write", self._update_auto_pdf_output)
         self._update_auto_pdf_output()
-        self.after(150, self._use_next_serial_from_github)
+        if self._auto_sync:
+            self.after(150, self._use_next_serial_from_github)
 
     def _frow(self, key, default, attr, w=None):
         r = _row(self)
@@ -3762,11 +3776,13 @@ class TICLabelTab(ctk.CTkScrollableFrame):
                 year=year,
             ))
             _notify_serial_registry_changed()
-            messagebox.showinfo("Exito",
-                f"PDF generado correctamente.\n\n"
-                f"Etiquetas: {n}\n"
-                f"P\u00e1ginas:   {pages}\n\n"
-                f"Archivo:\n{out_pdf}")
+            if not getattr(self, "_guided_mode", False):
+                messagebox.showinfo("Exito",
+                    f"PDF generado correctamente.\n\n"
+                    f"Etiquetas: {n}\n"
+                    f"P\u00e1ginas:   {pages}\n\n"
+                    f"Archivo:\n{out_pdf}")
+            return {"files": [out_pdf], "count": n}
 
         except ValueError as e:
             messagebox.showerror("Error de valor", f"Verifica los campos num\u00e9ricos.\n{e}")
@@ -4058,12 +4074,13 @@ class GatewayDialog(ctk.CTkToplevel):
 class GatewayTab(ctk.CTkScrollableFrame):
     X4S_LTE_SHUTDOWN_CMD = "curl -s update.resiot.io/extra/armshipmodegwsolar.sh | bash"
 
-    def __init__(self, master):
+    def __init__(self, master, auto_sync=True):
         super().__init__(master, fg_color=C_BODY_BG, corner_radius=0, border_width=0, label_text="")
         self._gateways = []
         self._refs = {}
         self._pdf_output_auto = True
         self._last_auto_pdf_path = ""
+        self._auto_sync = auto_sync
         self._build()
         _lang_cbs.append(self._refresh_lang)
         _register_serial_refresh_callback(self._handle_serial_registry_changed)
@@ -4168,7 +4185,8 @@ class GatewayTab(ctk.CTkScrollableFrame):
 
         self._status_lbl = ctk.CTkLabel(self, text=t("gw_ready"), text_color=C_HINT)
         self._status_lbl.pack(anchor="w", padx=18, pady=(0, 14))
-        self.after(150, self._show_next_gateway_serial_status)
+        if self._auto_sync:
+            self.after(150, self._show_next_gateway_serial_status)
 
     def _refresh_list(self):
         self.gateway_list.delete(0, tk.END)
@@ -4345,10 +4363,12 @@ class GatewayTab(ctk.CTkScrollableFrame):
                 year=serial_year,
             ))
             _notify_serial_registry_changed()
-            messagebox.showinfo(
-                "Exito",
-                t("gw_pdf_ok").format(total=total, pages=pages, path=output_path),
-            )
+            if not getattr(self, "_guided_mode", False):
+                messagebox.showinfo(
+                    "Exito",
+                    t("gw_pdf_ok").format(total=total, pages=pages, path=output_path),
+                )
+            return {"files": [output_path], "count": total}
         except ImportError as exc:
             messagebox.showerror("Libreria faltante", str(exc))
         except PermissionError:
@@ -5171,7 +5191,7 @@ class ManualsTab(ctk.CTkScrollableFrame):
             button.configure(text=t("manuals_button_save"))
 
 
-class App:
+class LegacyApp:
     def __init__(self, root: ctk.CTk):
         self.root = root
         root.title("Device Manager - TECNIDRO")
@@ -5467,6 +5487,14 @@ class App:
             )
         else:
             self._rtu_next_deveui_lbl.configure(text="")
+
+
+from device_manager_ui import GuidedApp
+
+
+class App(GuidedApp):
+    def __init__(self, root):
+        super().__init__(root, sys.modules[__name__])
 
 
 def main():

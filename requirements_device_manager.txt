@@ -1,0 +1,8 @@
+customtkinter
+Pillow
+reportlab
+qrcode
+pypdfium2
+# Build and test dependencies
+pyinstaller
+pypdf

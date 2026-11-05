@@ -1,7 +1,7 @@
 {
-  "version": "1.127",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v127.exe",
-  "sha256": "c0d84b344f8597117e31dffe2196602ce4e3655a92f94cf80f0b82da277d09f6",
-  "size": 69644119,
-  "notes": "Nuove sezioni Istantaneo 100L/1000L con numerazione condivisa da 0001 e LORACONT separata da RTU. Gateway con intestazione ordinata e simbolo batteria integrato. Un adesivo batteria per ogni Istantaneo, seriali sincronizzati su GitHub e caricamento dei moduli al primo utilizzo."
+  "version": "1.128",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v128.exe",
+  "sha256": "1ae869748810e85cefff2e255320d09b0df6c090a5c2276c80f24b10dbf0d6f1",
+  "size": 75168411,
+  "notes": "Nuova interfaccia guidata con foto prodotto, Menu precedente e pulsanti Apri dispositivo. Firmware compatti separati per dispositivo, icone di navigazione, varianti RTU/I-TIC/TIC12/Istantaneo, anteprime PDF e guide di installazione. Firmware RTU NBIoT 1.6 integrato per PIC24FJ128GL306. Conservati formati, seriali GitHub e aggiornamenti automatici."
 }

@@ -26,6 +26,7 @@ class WorkspaceTests(unittest.TestCase):
     def setUpClass(cls):
         OUT.mkdir(parents=True, exist_ok=True)
         cls.stack = ExitStack()
+        cls.saved_callbacks = (list(app._lang_cbs), list(app._serial_refresh_callbacks), list(app._rtu_deveui_refresh_callbacks))
         cls.registry = app._default_serial_registry()
         cls.registry["families"]["RTU"]["last_serial"] = 7997
         cls.stack.enter_context(patch.object(app, "_load_update_settings", return_value={"auto_check": False}))
@@ -42,11 +43,15 @@ class WorkspaceTests(unittest.TestCase):
         cls.root.withdraw()
         cls.callback_errors = []
         cls.root.report_callback_exception = lambda *args: cls.callback_errors.append("".join(traceback.format_exception(*args)))
-        cls.engine = app.App(cls.root)
+        cls.engine = app.LegacyApp(cls.root)
 
     @classmethod
     def tearDownClass(cls):
+        for identifier in cls.root.tk.call("after", "info"):
+            cls.root.after_cancel(identifier)
         cls.root.destroy()
+        for callbacks, saved in zip((app._lang_cbs, app._serial_refresh_callbacks, app._rtu_deveui_refresh_callbacks), cls.saved_callbacks):
+            callbacks[:] = saved
         cls.stack.close()
 
     def tool(self, workspace, sub):
