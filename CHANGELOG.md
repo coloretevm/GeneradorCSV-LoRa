@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.132 - 06/11/2026 (Sorgenti; Eseguibile Non Pubblicato)
+
+- Pubblicati il codice Python e C# della cache portatile, la specifica di build, i test e la documentazione.
+- Preparazione interna al primo avvio, riutilizzo verificato tramite SHA-256 nelle aperture successive, senza installer o download aggiuntivi dei componenti.
+- Cache separata per versione/contenuto, preparazione atomica, controllo degli avvii concorrenti e ricostruzione per file mancanti, alterati o inattesi.
+- Aggiornamento adattato al solo EXE visibile, verificando il launcher genitore e mantenendo i contatori su GitHub.
+- Rimossi NumPy e codec immagine non usati; tutte le 44 risorse prodotto confrontate restano identiche.
+- Impostazioni apre Lingua e aggiornamenti per prima; Seriali GitHub resta nella scheda accanto con password e correzioni verso il basso.
+- Corretta la chiusura della diagnostica automatica di avvio. Superati 67 test.
+- Test locali offline: prima preparazione 28,7 s; aperture successive 4,3 / 3,8 / 5,0 s. Tempi non garantiti su altri PC.
+- Il binario Device_Manager_v132.exe non e pubblicato per la presenza di credenziali incorporate. Il manifest rimane alla v129, ultima versione realmente scaricabile.
+
 ## 1.129 - 05/11/2026
 
 - Tema scuro predefinito al primo avvio, anche aggiornando una configurazione v128 che conservava il precedente default chiaro.

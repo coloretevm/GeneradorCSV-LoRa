@@ -1,6 +1,8 @@
 # Device Manager - TECNIDRO
 
-Versione pubblicata: **1.129** (05/11/2026).
+Ultimo eseguibile pubblicato: **1.129** (05/11/2026).
+
+Codice aggiornato: **1.132** (06/11/2026), eseguibile in attesa di pubblicazione.
 
 [Scarica Device_Manager_v129.exe](https://github.com/coloretevm/GeneradorCSV-LoRa/raw/refs/heads/main/downloads/Device_Manager_v129.exe)
 
@@ -12,11 +14,17 @@ Il manifest `update_manifest.json` contiene versione, URL del download, dimensio
 
 Chi usa la v125 puo aggiornare alla v127 dal programma. Per una prima installazione si puo scaricare direttamente la v127.
 
+## Codice v132 Disponibile
+
+Il codice della v132 e pubblicato, con avvio rapido tramite cache privata verificata, un solo EXE portatile, aggiornamento del launcher visibile e diagnostica offline. Le 67 prove automatiche sono state superate; nei test locali le aperture con cache pronta hanno impiegato 3,8-5,0 secondi.
+
+**L'eseguibile v132 non e ancora pubblicato.** La pubblicazione del binario e sospesa finche contiene credenziali incorporate. Il manifest degli aggiornamenti conserva l'ultima versione realmente scaricabile, evitando collegamenti a un EXE non disponibile. Per i dettagli del nuovo codice vedere [portable_launcher/README.md](portable_launcher/README.md).
+
 ## Novita v129
 
 Il primo avvio usa il tema scuro anche se la v128 aveva salvato il precedente default chiaro. Dopo questa migrazione, le nuove scelte esplicite del tema vengono conservate.
 
-Impostazioni apre direttamente Seriali GitHub: puoi correggere l'ultimo seriale usato di RTU, GW, I-TIC, TIC12 e Istantaneo con Salva valore oppure Salva tutti i valori. Ogni salvataggio chiede la password amministrativa; sono consentite anche correzioni verso valori inferiori. RTU e LORACONT mantengono il contatore RTU condiviso. La sincronizzazione non cancella una modifica manuale non ancora salvata.
+Nell'eseguibile v129, Impostazioni apre direttamente Seriali GitHub: puoi correggere l'ultimo seriale usato di RTU, GW, I-TIC, TIC12 e Istantaneo con Salva valore oppure Salva tutti i valori. Ogni salvataggio chiede la password amministrativa; sono consentite anche correzioni verso valori inferiori. RTU e LORACONT mantengono il contatore RTU condiviso. La sincronizzazione non cancella una modifica manuale non ancora salvata.
 
 Manuali > Fogli adesivi contiene ora il foglio QR Manuale TIC12 ridotto: 130 adesivi su A4, riquadro 18 x 20 mm, QR da 15 mm e testo Manual ITA-ENG, identici al modello usato nel generatore TIC12. Stampare al 100% delle dimensioni.
 
