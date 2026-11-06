@@ -16,6 +16,7 @@ from datetime import datetime
 from urllib import error as urlerror
 from urllib import request as urlrequest
 from PIL import Image
+from device_manager_runtime import application_executable
 from device_manager_labels import STICKER_SHEETS, tic_page_capacity
 from device_manager_serials import fetch_combined, save_combined
 from device_manager_updater import (
@@ -26,8 +27,8 @@ from device_manager_updater import (
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.129"
-APP_BUILD_NAME = "Device_Manager_v129"
+APP_VERSION = "1.132"
+APP_BUILD_NAME = "Device_Manager_v132"
 SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
@@ -67,7 +68,7 @@ def _resource(filename):
 
 def _runtime_dir():
     if getattr(sys, "frozen", False):
-        return os.path.dirname(sys.executable)
+        return str(application_executable().parent)
     return os.path.dirname(os.path.abspath(__file__))
 
 
@@ -1573,7 +1574,7 @@ def check_for_updates(parent, interactive=True, status_cb=None):
 
         filename = update_filename(manifest)
         target = os.path.join(_runtime_dir(), filename)
-        if os.path.normcase(os.path.abspath(target)) == os.path.normcase(os.path.abspath(sys.executable)):
+        if os.path.normcase(os.path.abspath(target)) == os.path.normcase(str(application_executable())):
             target = os.path.join(_runtime_dir(), os.path.splitext(filename)[0] + "_updated.exe")
 
         def begin_download(target):
@@ -5537,6 +5538,10 @@ class App(GuidedApp):
 
 
 def main():
+    if "--startup-probe" in sys.argv:
+        from device_manager_startup_probe import run
+        run(sys.modules[__name__])
+        return
     root = ctk.CTk()
     App(root)
     root.after_idle(notify_update_ready)

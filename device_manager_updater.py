@@ -12,6 +12,8 @@ import tempfile
 import time
 from urllib import parse, request
 
+from device_manager_runtime import application_context, application_executable
+
 
 def read_manifest(url, user_agent):
     parts = parse.urlsplit(url)
@@ -70,7 +72,7 @@ def download_update(manifest, target_path, user_agent, progress=None):
     target = Path(target_path).resolve()
     if target.suffix.lower() != ".exe":
         raise ValueError("The update filename must end in .exe.")
-    if target == Path(sys.executable).resolve():
+    if target in (Path(sys.executable).resolve(), application_executable()):
         raise ValueError("Cannot overwrite the running application.")
     descriptor, temporary = tempfile.mkstemp(prefix=".device-manager-", suffix=".download", dir=target.parent)
     try:
@@ -182,7 +184,7 @@ try {
 def launch_windows_handoff(downloaded_exe, digest, error_message):
     if os.name != "nt" or not getattr(sys, "frozen", False):
         raise OSError("Automatic installation requires the Windows executable.")
-    old = Path(sys.executable).resolve()
+    old, old_pid = application_context()
     new = Path(downloaded_exe).resolve()
     if old == new or old.suffix.lower() != ".exe" or new.suffix.lower() != ".exe":
         raise ValueError("Invalid update paths.")
@@ -193,7 +195,7 @@ def launch_windows_handoff(downloaded_exe, digest, error_message):
     plan = folder / "plan.json"
     script.write_text(WINDOWS_HANDOFF_SCRIPT, encoding="utf-8-sig")
     plan.write_text(json.dumps({
-        "old_exe": str(old), "new_exe": str(new), "old_pid": os.getpid(),
+        "old_exe": str(old), "new_exe": str(new), "old_pid": old_pid,
         "old_sha256": file_sha256(old), "new_sha256": digest,
         "ready_file": str(folder / "ready.json"), "error_message": error_message,
     }), encoding="utf-8")
@@ -216,7 +218,8 @@ def notify_update_ready():
         return
     try:
         temporary = path.with_suffix(".tmp")
-        temporary.write_text(json.dumps({"pid": os.getpid(), "executable": sys.executable}), encoding="utf-8")
+        executable, pid = application_context()
+        temporary.write_text(json.dumps({"pid": pid, "executable": str(executable)}), encoding="utf-8")
         os.replace(temporary, path)
     except OSError:
         pass

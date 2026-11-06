@@ -48,7 +48,7 @@ class WorkspaceTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         for identifier in cls.root.tk.call("after", "info"):
-            cls.root.after_cancel(identifier)
+            cls.root.tk.call("after", "cancel", identifier)
         cls.root.destroy()
         for callbacks, saved in zip((app._lang_cbs, app._serial_refresh_callbacks, app._rtu_deveui_refresh_callbacks), cls.saved_callbacks):
             callbacks[:] = saved

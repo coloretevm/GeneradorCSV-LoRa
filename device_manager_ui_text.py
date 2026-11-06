@@ -99,6 +99,7 @@ TEXT = {
     "terminals": ("Terminali", "Terminales", "Terminals"),
     "settings": ("Impostazioni", "Configuración", "Settings"),
     "settings_language": ("Lingua e aggiornamenti", "Idioma y actualizaciones", "Language and updates"),
+    "settings_language_help": ("Scegli la lingua, il tema e le opzioni di aggiornamento. I contatori sono nella scheda Seriali GitHub.", "Elige el idioma, el tema y las opciones de actualización. Los contadores están en la pestaña Seriales GitHub.", "Choose your language, theme and update options. Counters are in the GitHub serials tab."),
     "settings_serial": ("Seriali GitHub", "Seriales GitHub", "GitHub serials"),
     "serial_admin_help": ("Correggi l'ultimo seriale usato, anche con un valore inferiore. Ogni salvataggio richiede la password. RTU e LORACONT condividono il contatore RTU.", "Corrige el último serial utilizado, incluso a un valor menor. Cada guardado pide contraseña. RTU y LORACONT comparten el contador RTU.", "Correct the last used serial, including a lower value. Every save requires the password. RTU and LORACONT share the RTU counter."),
     "terminal_hint": ("Salva il pacchetto ZIP da usare sul tuo PC.", "Guarda el paquete ZIP para usarlo en tu PC.", "Save the ZIP package to use on your PC."),

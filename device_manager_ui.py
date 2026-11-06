@@ -750,13 +750,13 @@ class GuidedApp:
             page = ctk.CTkFrame(self.body, fg_color="transparent")
             self.settings_title = self.label(page, self.tr("settings"), size=26, bold=True)
             self.settings_title.pack(anchor="w", pady=(4, 6))
-            self.settings_help = self.label(page, self.tr("serial_admin_help"), size=12, color=MUTED, wrap=1080)
+            self.settings_help = self.label(page, self.tr("settings_language_help"), size=12, color=MUTED, wrap=1080)
             self.settings_help.pack(anchor="w", pady=(0, 8))
-            tabs = ctk.CTkTabview(page, fg_color=CARD)
+            tabs = ctk.CTkTabview(page, fg_color=CARD, command=self.refresh_settings_help)
             tabs.pack(fill="both", expand=True)
             self.settings_tabs = tabs
             self.settings_tab_names = {}
-            for name, tab in (("settings_serial", self.api.SerialTab), ("settings_language", self.api.LangTab)):
+            for name, tab in (("settings_language", self.api.LangTab), ("settings_serial", self.api.SerialTab)):
                 target = tabs.add(self.tr(name))
                 self.settings_tab_names[name] = self.tr(name)
                 if name == "settings_serial":
@@ -768,10 +768,29 @@ class GuidedApp:
                     tool = tab(target)
                 tool.pack(fill="both", expand=True)
                 self.api._apply_premium_theme(tool)
-            tabs.set(self.tr("settings_serial"))
             self.utility_cache["settings"] = page
         self.display(self.utility_cache["settings"])
+        self.refresh_settings_labels()
+        self.settings_tabs.set(self.tr("settings_language"))
+        self.refresh_settings_help()
         self.start_sync()
+
+    def refresh_settings_help(self):
+        key = "serial_admin_help" if self.settings_tabs.get() == self.tr("settings_serial") else "settings_language_help"
+        self.settings_help.configure(text=self.tr(key))
+
+    def refresh_settings_labels(self):
+        self.settings_title.configure(text=self.tr("settings"))
+        selected = self.settings_tabs.get()
+        selected_key = next((key for key, name in self.settings_tab_names.items() if name == selected), None)
+        for key, previous in list(self.settings_tab_names.items()):
+            current = self.tr(key)
+            if previous != current:
+                self.settings_tabs.rename(previous, current)
+                self.settings_tab_names[key] = current
+        if selected_key is not None:
+            self.settings_tabs.set(self.tr(selected_key))
+        self.refresh_settings_help()
 
     def show_result(self, session, result, serial_range):
         self.active_route = ("result", session, result, serial_range)
@@ -884,13 +903,7 @@ class GuidedApp:
         self.theme_button.configure(text=self.tr("theme"))
         self.retry_button.configure(text=self.tr("retry"))
         if "settings" in self.utility_cache:
-            self.settings_title.configure(text=self.tr("settings"))
-            self.settings_help.configure(text=self.tr("serial_admin_help"))
-            for key, previous in list(self.settings_tab_names.items()):
-                current = self.tr(key)
-                if previous != current:
-                    self.settings_tabs.rename(previous, current)
-                    self.settings_tab_names[key] = current
+            self.refresh_settings_labels()
         route = self.active_route
         if route[0] == "home":
             self.show_home()

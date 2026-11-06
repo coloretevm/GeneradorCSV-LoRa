@@ -52,7 +52,7 @@ class GuidedTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.engine.closed = True
         for identifier in cls.root.tk.call("after", "info"):
-            cls.root.after_cancel(identifier)
+            cls.root.tk.call("after", "cancel", identifier)
         cls.root.destroy()
         for callbacks, saved in zip((api._lang_cbs, api._serial_refresh_callbacks, api._rtu_deveui_refresh_callbacks), cls.saved_callbacks):
             callbacks[:] = saved
@@ -301,11 +301,15 @@ class GuidedTests(unittest.TestCase):
         finally:
             api.ctk.set_appearance_mode(previous)
 
-    def test_15_settings_opens_directly_on_visible_github_counters(self):
+    def test_15_settings_defaults_to_language_with_counters_accessible(self):
         self.engine.registry = copy.deepcopy(self.registry)
         self.engine.show_settings()
         tool = self.engine.serial_settings_tool
-        self.assertEqual(self.engine.settings_tabs.get(), self.engine.tr("settings_serial"))
+        self.assertEqual(self.engine.settings_tabs.get(), self.engine.tr("settings_language"))
+        self.assertEqual(self.engine.settings_help.cget("text"), self.engine.tr("settings_language_help"))
+        self.engine.settings_tabs.set(self.engine.tr("settings_serial"))
+        self.engine.refresh_settings_help()
+        self.assertEqual(self.engine.settings_help.cget("text"), self.engine.tr("serial_admin_help"))
         self.assertTrue(tool._registry_only)
         self.assertFalse(tool._auto_sync)
         self.assertEqual(set(tool._family_save_buttons), set(api.SERIAL_FAMILY_ORDER))
@@ -389,8 +393,33 @@ class GuidedTests(unittest.TestCase):
             self.engine.language_refresh()
             self.assertIn(self.engine.tr("settings_serial"), self.engine.settings_tabs._tab_dict)
             self.assertIn(self.engine.tr("settings_language"), self.engine.settings_tabs._tab_dict)
+            self.assertEqual(self.engine.settings_tabs.get(), self.engine.tr("settings_language"))
         self.root.update_idletasks()
         self.assertFalse(self.callback_errors, self.callback_errors)
+
+    def test_20_reopening_settings_defaults_to_language_without_losing_serial_edits(self):
+        self.engine.show_settings()
+        tool = self.engine.serial_settings_tool
+        tool._load_registry_values(self.registry)
+        tool._family_vars["TIC12"].set("77")
+        self.engine.settings_tabs.set(self.engine.tr("settings_serial"))
+        self.engine.refresh_settings_help()
+        self.engine.go_back()
+        self.engine.show_settings()
+        self.assertEqual(self.engine.settings_tabs.get(), self.engine.tr("settings_language"))
+        self.assertEqual(tool._family_vars["TIC12"].get(), "77")
+        self.assertEqual(self.engine.settings_help.cget("text"), self.engine.tr("settings_language_help"))
+        tool._load_registry_values(self.registry)
+
+    def test_21_cached_settings_labels_are_synchronized_before_default_selection(self):
+        try:
+            for language in ("en", "es", "it"):
+                api._cur_lang[0] = language
+                self.engine.show_settings()
+                self.assertEqual(self.engine.settings_tabs.get(), self.engine.tr("settings_language"))
+        finally:
+            api._cur_lang[0] = "it"
+            self.engine.language_refresh()
 
 
 if __name__ == "__main__":
