@@ -1,6 +1,15 @@
 """Text for the guided interface. Values are Italian, Spanish and English."""
 
 TEXT = {
+    "settings_devices": ("Computer autorizzati", "Equipos autorizados", "Approved Computers"),
+    "devices_help": ("Solo il PC amministratore puo autorizzare i computer. Confronta il codice con quello mostrato sul PC in attesa.", "Solo el PC administrador puede autorizar equipos. Comprueba el codigo mostrado en el PC pendiente.", "Only the administrator PC can approve computers. Match the code shown on the waiting PC."),
+    "refresh_devices": ("Aggiorna elenco", "Actualizar lista", "Refresh List"),
+    "approve_device": ("Autorizza PC", "Autorizar PC", "Approve PC"),
+    "approve_device_confirm": ("Autorizzare {name}?\nCodice PC: {code}\nVerifica che corrisponda al computer dell'ufficio.", "Autorizar {name}?\nCodigo PC: {code}\nComprueba que corresponda al equipo de la oficina.", "Approve {name}?\nPC code: {code}\nCheck that this is the intended office computer."),
+    "devices_none": ("Nessun altro PC registrato.", "No hay otros equipos registrados.", "No other computers registered."),
+    "device_pending": ("In attesa", "Pendiente", "Pending"),
+    "device_approved": ("Autorizzato", "Autorizado", "Approved"),
+    "device_revoked": ("Revocato", "Revocado", "Revoked"),
     "home": ("Inizio", "Inicio", "Home"),
     "new_work": ("Nuovo lavoro", "Nuevo trabajo", "New task"),
     "home_title": ("Con quale dispositivo vuoi lavorare?", "¿Con qué dispositivo quieres trabajar?", "Which device would you like to work with?"),
@@ -32,6 +41,8 @@ TEXT = {
     "nortu": ("Senza Bluetooth", "Sin Bluetooth", "Without Bluetooth"),
     "tubo": ("In tubo", "En tubo", "Tube enclosure"),
     "nbiot": ("NBIoT", "NBIoT", "NBIoT"),
+    "BLE": ("BLE", "BLE", "BLE"),
+    "firmware_only": ("Solo firmware", "Solo firmware", "Firmware only"),
     "nbiot_hint": ("In sviluppo. Per ora è disponibile solo il firmware.", "En desarrollo. Por ahora solo está disponible el firmware.", "In development. Only firmware is available for now."),
     "rev6": ("REV6", "REV6", "REV6"), "rev4": ("REV4", "REV4", "REV4"),
     "AC": ("AC", "AC", "AC"), "DC": ("DC", "DC", "DC"),

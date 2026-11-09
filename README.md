@@ -1,10 +1,8 @@
 # Device Manager - TECNIDRO
 
-Ultimo eseguibile pubblicato: **1.129** (05/11/2026).
+Ultimo eseguibile e codice pubblicati: **1.134** (09/11/2026).
 
-Codice aggiornato: **1.132** (06/11/2026), eseguibile in attesa di pubblicazione.
-
-[Scarica Device_Manager_v129.exe](https://github.com/coloretevm/GeneradorCSV-LoRa/raw/refs/heads/main/downloads/Device_Manager_v129.exe)
+[Scarica Device_Manager_v134.exe](https://github.com/coloretevm/GeneradorCSV-LoRa/raw/refs/heads/main/downloads/Device_Manager_v134.exe)
 
 ## Aggiornamenti automatici
 
@@ -12,13 +10,15 @@ Dalla versione 1.125 il programma controlla gli aggiornamenti GitHub in backgrou
 
 Il manifest `update_manifest.json` contiene versione, URL del download, dimensione e checksum SHA-256. Ogni nuova pubblicazione deve aggiornare questo file insieme all'eseguibile. Non occorre un token per leggere il manifest o scaricare gli aggiornamenti pubblici.
 
-Chi usa la v125 puo aggiornare alla v127 dal programma. Per una prima installazione si puo scaricare direttamente la v127.
+Le versioni compatibili rilevano la v134 se il controllo aggiornamenti e attivo. In alternativa, usa Impostazioni > Lingua e aggiornamenti > Controlla aggiornamenti, oppure scarica direttamente l'EXE.
 
-## Codice v132 Disponibile
+## Novita v134
 
-Il codice della v132 e pubblicato, con avvio rapido tramite cache privata verificata, un solo EXE portatile, aggiornamento del launcher visibile e diagnostica offline. Le 67 prove automatiche sono state superate; nei test locali le aperture con cache pronta hanno impiegato 3,8-5,0 secondi.
+TIC12 include sei firmware 03.02.05 per PIC18F47Q84: AC e DC con selettori e BLE, ciascuno in versione PROD e DEBUG. I precedenti AC/DC NOROLL 02.00.02 e i firmware dei moduli di espansione restano disponibili. Nel percorso TIC12, la variante BLE mostra solo i suoi firmware.
 
-**L'eseguibile v132 non e ancora pubblicato.** La pubblicazione del binario e sospesa finche contiene credenziali incorporate. Il manifest degli aggiornamenti conserva l'ultima versione realmente scaricabile, evitando collegamenti a un EXE non disponibile. Per i dettagli del nuovo codice vedere [portable_launcher/README.md](portable_launcher/README.md).
+La v134 include l'avvio rapido con cache privata. Il token GitHub non e presente nell'eseguibile: resta nel servizio privato per i seriali. Sul PC amministratore, apri Impostazioni > Computer autorizzati e verifica il codice mostrato sull'altro PC prima di premere Autorizza PC. L'autorizzazione resta valida nelle versioni successive e non richiede account GitHub o Cloudflare sui PC degli operatori.
+
+Dettagli tecnici: [servizio seriali](serial_service/README.md), [build portatile](portable_launcher/README.md) e [modifiche](CHANGELOG.md).
 
 ## Novita v129
 
@@ -70,7 +70,7 @@ La sezione Istantaneo genera etichette 100L o 1000L, con un contatore unico cond
 - `label_assets/`: QR originali e simbolo batteria vettoriale alle dimensioni originali.
 - `test_device_manager_updater.py`: test del manifest e dei download, compresi i casi di errore.
 - `fw/` e `manuali/`: file firmware e manuali.
-- `downloads/Device_Manager_v129.exe`: eseguibile pubblicato.
+- `downloads/Device_Manager_v134.exe`: eseguibile pubblicato.
 - `CHANGELOG.md`: modifiche pubblicate.
 
 La v125 include i firmware LoraCont 1.0.6 INFO/TRACE, il manuale TIC12 aggiornato, le sei varianti RST per Instantaneo Nuovo e Terminal Antonio del 22/06/2026.

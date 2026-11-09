@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.134 - 09/11/2026
+
+- Aggiunti sei firmware TIC12 03.02.05: AC selettori, DC selettori e BLE, in variante PROD e DEBUG.
+- Conservati i firmware AC/DC NOROLL 02.00.02 e dei moduli di espansione. Il percorso BLE mostra soltanto i firmware BLE.
+- EXE portatile con cache rapida e senza token GitHub incorporato. I nuovi PC si autorizzano da Impostazioni > Computer autorizzati; i contatori rimangono su GitHub.
+- Verificati i sei file HEX e le 24 risorse firmware precedenti tramite SHA-256. Superati 24 test guidati e di packaging e la prova di avvio offline del binario.
+- Pubblicati l'eseguibile, il codice Python, i sorgenti del servizio, la specifica di build e il manifest di aggiornamento.
+
 ## 1.132 - 06/11/2026 (Sorgenti; Eseguibile Non Pubblicato)
 
 - Pubblicati il codice Python e C# della cache portatile, la specifica di build, i test e la documentazione.
@@ -10,7 +18,7 @@
 - Impostazioni apre Lingua e aggiornamenti per prima; Seriali GitHub resta nella scheda accanto con password e correzioni verso il basso.
 - Corretta la chiusura della diagnostica automatica di avvio. Superati 67 test.
 - Test locali offline: prima preparazione 28,7 s; aperture successive 4,3 / 3,8 / 5,0 s. Tempi non garantiti su altri PC.
-- Il binario Device_Manager_v132.exe non e pubblicato per la presenza di credenziali incorporate. Il manifest rimane alla v129, ultima versione realmente scaricabile.
+- Il binario Device_Manager_v132.exe non e stato pubblicato per la presenza di credenziali incorporate.
 
 ## 1.129 - 05/11/2026
 

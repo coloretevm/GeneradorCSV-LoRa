@@ -75,10 +75,19 @@ class GuidedTests(unittest.TestCase):
         self.assertEqual(VARIANTS["RTU"], ("blte", "nortu", "tubo", "nbiot"))
 
     def test_02_firmware_filtering(self):
-        for variant in ("AC", "DC"):
-            for item in firmware_for(api, "TIC12", variant):
-                self.assertTrue(item["firmwares"])
-                self.assertTrue(all(label.startswith(variant) for label, _ in item["firmwares"]))
+        self.assertEqual(VARIANTS["TIC12"], ("AC", "DC", "BLE"))
+        self.assertEqual(actions_for("TIC12", "BLE"), ("firmware",))
+        for variant in VARIANTS["TIC12"]:
+            unit, *expansion = firmware_for(api, "TIC12", variant)
+            self.assertEqual(unit["pic"], "PIC18F47Q84")
+            family = variant if variant == "BLE" else f"{variant} SELETTORI"
+            expected = [f"{family} PROD 03.02.05", f"{family} DEBUG 03.02.05"]
+            if variant == "BLE":
+                self.assertFalse(expansion)
+            else:
+                expected.append(f"{variant}/NOROLL 02.00.02")
+                self.assertEqual(expansion[0]["firmwares"][0][0], variant)
+            self.assertEqual([label for label, _ in unit["firmwares"]], expected)
         self.assertEqual(firmware_for(api, "RTU", "nbiot")[0]["pic"], "PIC24FJ128GL306")
         self.assertEqual(firmware_for(api, "RTU", "nbiot")[0]["firmwares"][0][1], NBIOT_FILE)
         self.assertEqual(len(firmware_for(api, "I-TIC", "rev4")), 1)

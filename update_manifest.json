@@ -1,7 +1,7 @@
 {
-  "version": "1.129",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v129.exe",
-  "sha256": "89a78a3aa4b02caf3f336a878e5f60baca697b43cb80d0e87bfce9c6d81e2b1e",
-  "size": 75172550,
-  "notes": "Tema scuro predefinito. Impostazioni apre Seriali GitHub con salvataggi protetti da password, anche verso valori inferiori. Foglio QR Manuale TIC12 aggiornato: A4 con 130 adesivi ridotti 18 x 20 mm, QR 15 mm e testo Manual ITA-ENG. Conservati i formati, i firmware e l'aggiornamento automatico."
+  "version": "1.134",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v134.exe",
+  "sha256": "8118054726831d785c9d0d67e6a82f67393d3dda8b43d4e24654288315d3b8c4",
+  "size": 61351424,
+  "notes": "TIC12: sei firmware 03.02.05 AC, DC e BLE in PROD e DEBUG, con le versioni precedenti conservate. Avvio rapido e registro seriali senza token incorporato. Autorizzare i nuovi PC da Impostazioni > Computer autorizzati."
 }

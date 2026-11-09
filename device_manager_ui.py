@@ -537,8 +537,9 @@ class GuidedApp:
             card = ctk.CTkFrame(grid, fg_color=CARD, corner_radius=18, border_width=1, border_color=LINE)
             card.grid(row=i // 2, column=i % 2, sticky="nsew", padx=8, pady=8)
             self.label(card, self.variant_text(variant), size=24, bold=True).pack(anchor="w", padx=24, pady=(24, 10))
-            if variant == "nbiot":
-                self.label(card, self.tr("nbiot_hint"), size=13, color=MUTED, wrap=450).pack(anchor="w", padx=24, pady=(0, 12))
+            if variant in ("nbiot", "BLE"):
+                hint = "nbiot_hint" if variant == "nbiot" else "firmware_only"
+                self.label(card, self.tr(hint), size=13, color=MUTED, wrap=450).pack(anchor="w", padx=24, pady=(0, 12))
             self.button(card, self.tr("next"), lambda v=variant: self.show_actions(product, v)).pack(anchor="w", padx=24, pady=(0, 24))
 
     def show_actions(self, product, variant):
@@ -660,6 +661,8 @@ class GuidedApp:
             text = label.replace("versionhe", "versione")
             if narrow and "/NOROLL " in text:
                 text = text.replace("/NOROLL ", "/NOROLL\n")
+            if narrow and " SELETTORI " in text:
+                text = text.replace(" SELETTORI ", " SELETTORI\n")
             column = index % 3 if many else index
             buttons.grid_columnconfigure(column, weight=1 if many else 0)
             button = self.button(buttons, text,
@@ -768,6 +771,18 @@ class GuidedApp:
                     tool = tab(target)
                 tool.pack(fill="both", expand=True)
                 self.api._apply_premium_theme(tool)
+            if self.api.SERVICE_URL:
+                name = "settings_devices"
+                target = tabs.add(self.tr(name))
+                self.settings_tab_names[name] = self.tr(name)
+                self.devices_help = self.label(target, self.tr("devices_help"), wrap=1000)
+                self.devices_help.pack(anchor="w", padx=16, pady=16)
+                self.devices_refresh_button = self.button(target, self.tr("refresh_devices"), self.refresh_devices)
+                self.devices_refresh_button.pack(anchor="w", padx=16, pady=(0, 12))
+                self.devices_list = ctk.CTkScrollableFrame(target, fg_color="transparent", label_text="")
+                self.devices_list.pack(fill="both", expand=True, padx=10, pady=10)
+                self.device_refreshing = False
+                self.device_rows = None
             self.utility_cache["settings"] = page
         self.display(self.utility_cache["settings"])
         self.refresh_settings_labels()
@@ -776,8 +791,50 @@ class GuidedApp:
         self.start_sync()
 
     def refresh_settings_help(self):
-        key = "serial_admin_help" if self.settings_tabs.get() == self.tr("settings_serial") else "settings_language_help"
+        selected = self.settings_tabs.get()
+        key = ("serial_admin_help" if selected == self.tr("settings_serial") else
+               "devices_help" if selected == self.tr("settings_devices") else "settings_language_help")
         self.settings_help.configure(text=self.tr(key))
+        if selected == self.tr("settings_devices") and self.device_rows is None:
+            self.refresh_devices()
+
+    def refresh_devices(self):
+        if self.device_refreshing or self.closed:
+            return
+        self.device_refreshing = True
+        def work():
+            try:
+                self.events.put(("devices", self.api._serial_service_client().devices()))
+            except Exception as exc:
+                self.events.put(("device_error", exc))
+        threading.Thread(target=work, daemon=True).start()
+
+    def render_devices(self, devices):
+        self.device_rows = devices
+        for child in self.devices_list.winfo_children():
+            child.destroy()
+        if not devices:
+            self.label(self.devices_list, self.tr("devices_none")).pack(anchor="w", padx=12, pady=12)
+        for device in devices:
+            row = ctk.CTkFrame(self.devices_list, fg_color=CARD)
+            row.pack(fill="x", padx=8, pady=5)
+            status = self.tr("device_" + device["status"])
+            self.label(row, f"{device['label']}   |   {device['id'][:12]}   |   {status}", wrap=850).pack(side="left", padx=12, pady=12)
+            if device["status"] != "approved":
+                self.button(row, self.tr("approve_device"), lambda d=device: self.approve_device(d), width=130).pack(side="right", padx=12)
+
+    def approve_device(self, device):
+        if not messagebox.askyesno("Device Manager", self.tr("approve_device_confirm").format(
+                name=device["label"], code=device["id"][:12]), parent=self.root):
+            return
+        def work():
+            try:
+                client = self.api._serial_service_client()
+                client.approve(device["id"])
+                self.events.put(("devices", client.devices()))
+            except Exception as exc:
+                self.events.put(("device_error", exc))
+        threading.Thread(target=work, daemon=True).start()
 
     def refresh_settings_labels(self):
         self.settings_title.configure(text=self.tr("settings"))
@@ -790,6 +847,11 @@ class GuidedApp:
                 self.settings_tab_names[key] = current
         if selected_key is not None:
             self.settings_tabs.set(self.tr(selected_key))
+        if hasattr(self, "devices_help"):
+            self.devices_help.configure(text=self.tr("devices_help"))
+            self.devices_refresh_button.configure(text=self.tr("refresh_devices"))
+            if self.device_rows is not None:
+                self.render_devices(self.device_rows)
         self.refresh_settings_help()
 
     def show_result(self, session, result, serial_range):
@@ -848,7 +910,7 @@ class GuidedApp:
                 registry = self.api._serial_registry_fetch(self.api._load_serial_settings())
                 self.events.put(("registry", registry))
             except Exception as exc:
-                self.events.put(("sync_error", str(exc)))
+                self.events.put(("sync_error", exc))
         threading.Thread(target=work, daemon=True).start()
 
     def poll_events(self):
@@ -857,8 +919,16 @@ class GuidedApp:
         try:
             while True:
                 event, data = self.events.get_nowait()
-                self.sync_running = False
-                if event == "registry":
+                if event in ("registry", "sync_error"):
+                    self.sync_running = False
+                if event == "devices":
+                    self.device_refreshing = False
+                    self.render_devices(data)
+                elif event == "device_error":
+                    self.device_refreshing = False
+                    self.device_rows = []
+                    messagebox.showerror("Device Manager", str(data), parent=self.root)
+                elif event == "registry":
                     self.registry = data
                     self.connection.configure(text=self.tr("serial_ok"), text_color=GREEN)
                     self.retry_button.pack_forget()
@@ -868,7 +938,11 @@ class GuidedApp:
                     if tool is not None and (not tool._registry_loaded or not tool._registry_user_edited):
                         tool._load_registry_values(data)
                 else:
-                    self.connection.configure(text=self.tr("serial_error"), text_color=RED)
+                    detail = str(data)
+                    if getattr(data, "code", "") == "device_pending_approval":
+                        detail += "   PC: " + self.api._serial_service_client().identity["id"][:12]
+                        self.root.after(15000, self.start_sync)
+                    self.connection.configure(text=detail or self.tr("serial_error"), text_color=RED)
                     self.retry_button.pack(side="left", padx=10)
         except queue.Empty:
             pass

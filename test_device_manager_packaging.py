@@ -13,7 +13,7 @@ from device_manager_preview import render_pdf
 
 
 ROOT = Path(__file__).resolve().parent
-SPEC = ast.parse((ROOT / "Device_Manager_v132.spec").read_text(encoding="utf-8"))
+SPEC = ast.parse((ROOT / "Device_Manager_v134.spec").read_text(encoding="utf-8"))
 OPTIONAL = next(ast.literal_eval(node.value) for node in SPEC.body
                 if isinstance(node, ast.Assign)
                 and any(isinstance(target, ast.Name) and target.id == "OPTIONAL_MODULES" for target in node.targets))

@@ -17,6 +17,7 @@ from urllib import error as urlerror
 from urllib import request as urlrequest
 from PIL import Image
 from device_manager_runtime import application_executable
+from device_manager_service import SERVICE_URL, ServiceClient, error_message as service_error_message
 from device_manager_labels import STICKER_SHEETS, tic_page_capacity
 from device_manager_serials import fetch_combined, save_combined
 from device_manager_updater import (
@@ -27,8 +28,8 @@ from device_manager_updater import (
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.132"
-APP_BUILD_NAME = "Device_Manager_v132"
+APP_VERSION = "1.134"
+APP_BUILD_NAME = "Device_Manager_v133"
 SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
@@ -58,6 +59,16 @@ SERIAL_FAMILY_SETTINGS = {
 _serial_registry_cache = None
 _serial_refresh_callbacks = []
 _rtu_deveui_refresh_callbacks = []
+_service_client_instance = None
+_service_client_lock = threading.Lock()
+
+
+def _serial_service_client():
+    global _service_client_instance
+    with _service_client_lock:
+        if _service_client_instance is None:
+            _service_client_instance = ServiceClient(SERVICE_URL)
+        return _service_client_instance
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _resource(filename):
@@ -117,6 +128,8 @@ def _notify_rtu_deveui_changed(value=None):
 
 
 def _load_embedded_serial_token():
+    if SERVICE_URL:
+        return ""
     for path in (
         _resource("serial_token.txt"),
         os.path.join(_runtime_dir(), "serial_token.txt"),
@@ -186,7 +199,7 @@ def _load_serial_settings():
     settings["registry_url"] = str(settings.get("registry_url", "")).strip() or DEFAULT_SERIAL_SETTINGS["registry_url"]
     settings["api_url"] = str(settings.get("api_url", "")).strip() or DEFAULT_SERIAL_SETTINGS["api_url"]
     settings["station_name"] = os.environ.get("COMPUTERNAME", str(settings.get("station_name", "")).strip() or DEFAULT_SERIAL_SETTINGS["station_name"])
-    settings["token"] = (
+    settings["token"] = "" if SERVICE_URL else (
         os.environ.get("DEVICE_MANAGER_GITHUB_TOKEN", "").strip()
         or _load_embedded_serial_token()
         or str(settings.get("token", "")).strip()
@@ -202,7 +215,10 @@ def _save_serial_settings(settings):
     merged["registry_url"] = str(merged.get("registry_url", "")).strip() or DEFAULT_SERIAL_SETTINGS["registry_url"]
     merged["api_url"] = str(merged.get("api_url", "")).strip() or DEFAULT_SERIAL_SETTINGS["api_url"]
     merged["station_name"] = str(merged.get("station_name", "")).strip() or DEFAULT_SERIAL_SETTINGS["station_name"]
-    merged["token"] = str(merged.get("token", "")).strip()
+    if SERVICE_URL:
+        merged.pop("token", None)
+    else:
+        merged["token"] = str(merged.get("token", "")).strip()
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(merged, fh, indent=2, ensure_ascii=False)
     return merged
@@ -288,6 +304,9 @@ def _normalize_serial_registry(data):
         registry["families"].update({key: copy.deepcopy(value) for key, value in families.items()
                                      if key not in SERIAL_FAMILY_ORDER})
     registry["updated_at"] = str(data.get("updated_at", "") or "")
+    revision = data.get("_service_revision", "")
+    if isinstance(revision, str) and len(revision) == 40 and all(c in "0123456789abcdef" for c in revision):
+        registry["_service_revision"] = revision
     for family in SERIAL_FAMILY_ORDER:
         entry = {}
         if isinstance(families, dict):
@@ -434,11 +453,15 @@ def _serial_registry_push_single(settings, registry, message):
 
 
 def _serial_registry_pull(settings):
+    if SERVICE_URL:
+        return _set_serial_registry_cache(_serial_service_client().fetch())
     return _set_serial_registry_cache(fetch_combined(
         settings, _serial_registry_pull_single, _default_serial_registry))
 
 
 def _serial_registry_push(settings, registry, message):
+    if SERVICE_URL:
+        return _set_serial_registry_cache(_serial_service_client().save(registry))
     return _set_serial_registry_cache(save_combined(
         settings, registry, message, _serial_registry_pull_single,
         _serial_registry_push_single, _default_serial_registry))
@@ -1453,6 +1476,8 @@ def _prompt_serial_password(parent):
 
 
 def _ensure_serial_token(parent, settings):
+    if SERVICE_URL:
+        return dict(settings, token="")
     token = (
         str(settings.get("token", "")).strip()
         or os.environ.get("DEVICE_MANAGER_GITHUB_TOKEN", "").strip()
@@ -4430,6 +4455,12 @@ FW_DOWNLOADS = {
             "label_key": "fw_item_tic12_control_unit",
             "pic": "PIC18F47Q84",
             "firmwares": [
+                ("AC SELETTORI PROD 03.02.05", "Master_08.11.2026.Ver_03.02.05_AC_SELETTORI_PROD.hex"),
+                ("DC SELETTORI PROD 03.02.05", "Master_08.11.2026.Ver_03.02.05_DC_SELETTORI_PROD.hex"),
+                ("BLE PROD 03.02.05", "Master_08.11.2026.Ver_03.02.05_BLE.PROD.hex"),
+                ("AC SELETTORI DEBUG 03.02.05", "Master_08.11.2026.Ver_03.02.05_AC_SELETTORI_DEBUG.hex"),
+                ("DC SELETTORI DEBUG 03.02.05", "Master_08.11.2026.Ver_03.02.05_DC_SELETTORI_DEBUG.hex"),
+                ("BLE DEBUG 03.02.05", "Master_08.11.2026.Ver_03.02.05_BLE.DEBUG.hex"),
                 ("AC/NOROLL 02.00.02", "Master.15.03.2025.Ver_02.00.02.production.AC.NO_ROLLINGVALVES.hex.hex"),
                 ("DC/NOROLL 02.00.02", "Master.15.03.2025.Ver_02.00.02.production.DC.NO_ROLLINGVALVES.hex"),
             ],

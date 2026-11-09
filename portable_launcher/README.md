@@ -1,6 +1,6 @@
-# Device Manager v132 - Portable Cache
+# Device Manager v134 - Portable Cache
 
-The user receives only `Device_Manager_v132.exe`. There is no installer, elevation,
+The user receives only `Device_Manager_v134.exe`. There is no installer, elevation,
 additional resource download, or Python installation on the target Windows PC.
 The small launcher uses the Windows .NET Framework and embeds the full application.
 
@@ -28,15 +28,16 @@ The cached core is not mistaken for the executable to replace.
 ## Build
 
 ```powershell
-python -m PyInstaller --noconfirm --distpath dist/v132_core --workpath build/Device_Manager_v132 Device_Manager_v132.spec
-python portable_launcher/build_portable.py dist/v132_core/Device_Manager_Core dist/v132_final/Device_Manager_v132.exe
+python -m pip install -r requirements_device_manager.txt
+python -m PyInstaller --noconfirm --distpath dist/v134_core --workpath build/Device_Manager_v134 Device_Manager_v134.spec
+python portable_launcher/build_portable.py dist/v134_core/Device_Manager_Core dist/v134_final/Device_Manager_v134.exe
 ```
 
 The directory build is an intermediate developer artifact, not a user deliverable.
 The second command embeds it and its integrity manifest in the final EXE. The
 compiler is the Windows .NET Framework `csc.exe`; no compiler is required by users.
-Do not publish the intermediate payload, credentials, or executable without the
-appropriate authorization for any embedded credentials.
+The build embeds the device identity helper, never an existing private device
+key or GitHub token. See [the serial service documentation](../serial_service/README.md).
 
 ## Offline Verification
 

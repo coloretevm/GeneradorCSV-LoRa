@@ -15,7 +15,7 @@ PRODUCTS = ("RTU", "LORACONT", "Gateway", "I-TIC", "TIC12", "Istantaneo")
 VARIANTS = {
     "RTU": ("blte", "nortu", "tubo", "nbiot"),
     "I-TIC": ("rev6", "rev4"),
-    "TIC12": ("AC", "DC"),
+    "TIC12": ("AC", "DC", "BLE"),
     "Istantaneo": ("new", "old"),
 }
 NBIOT_FILE = "pic24_Radio_NBIOT_2CH.Xver_1.6_02.11.2026.production.hex"
@@ -28,6 +28,8 @@ def actions_for(product, variant=""):
         return ("project", "csv", "json", "labels", "firmware", "guide")
     if product == "Gateway":
         return ("labels", "shutdown")
+    if product == "TIC12" and variant == "BLE":
+        return ("firmware",)
     if product in ("I-TIC", "TIC12"):
         return ("labels", "firmware", "manual")
     if product == "Istantaneo":
@@ -49,7 +51,7 @@ def firmware_for(api, product, variant=""):
         for item in groups:
             item["firmwares"] = [(label, path) for label, path in item["firmwares"]
                                  if not variant or label.split("/")[0].split()[0] == variant]
-        return groups
+        return [item for item in groups if item["firmwares"]]
     if product == "I-TIC":
         return [copy.deepcopy(item) for item in api.FW_DOWNLOADS["FUNGHI"]
                 if item["label_key"] == ("fw_item_rev4" if variant == "rev4" else "fw_item_rev6")]

@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tecnidro-serial-service",
+  "main": "src/worker.mjs",
+  "account_id": "9a4362c18f863d7debb84224c0531e73",
+  "compatibility_date": "2026-01-01",
+  "workers_dev": true,
+  "vars": {
+    "GITHUB_REPOSITORY": "coloretevm/GeneradorCSV-LoRa",
+    "GITHUB_BRANCH": "main"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "SERVICE", "class_name": "SerialService" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SerialService"] }],
+  "observability": { "enabled": false }
+}
