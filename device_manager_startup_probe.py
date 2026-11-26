@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import sys
 import tempfile
 
 
@@ -32,6 +33,12 @@ def run(api):
                 result["pdf_preview"] = pages == 1 and image.width == 320
             result["products"] = len(app.product_buttons)
             result["runtime_dir"] = api._runtime_dir()
+            if "--check-admin" in sys.argv:
+                client = api.ServiceClient(api.SERVICE_URL, existing_only=True)
+                result["device_code"] = client.identity["id"][:12]
+                result["offline"] = False
+                result["admin_devices"] = len(client.devices())
+                result["admin_verified"] = client.admin
         except Exception as exc:
             result["error"] = str(exc)
         (marker.parent / "checks.json").write_text(json.dumps(result), encoding="utf-8")

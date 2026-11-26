@@ -5,6 +5,7 @@ TEXT = {
     "devices_help": ("Solo il PC amministratore puo autorizzare i computer. Confronta il codice con quello mostrato sul PC in attesa.", "Solo el PC administrador puede autorizar equipos. Comprueba el codigo mostrado en el PC pendiente.", "Only the administrator PC can approve computers. Match the code shown on the waiting PC."),
     "refresh_devices": ("Aggiorna elenco", "Actualizar lista", "Refresh List"),
     "approve_device": ("Autorizza PC", "Autorizar PC", "Approve PC"),
+    "device_admin_verified": ("PC amministratore verificato: {code}", "PC administrador verificado: {code}", "Administrator PC verified: {code}"),
     "approve_device_confirm": ("Autorizzare {name}?\nCodice PC: {code}\nVerifica che corrisponda al computer dell'ufficio.", "Autorizar {name}?\nCodigo PC: {code}\nComprueba que corresponda al equipo de la oficina.", "Approve {name}?\nPC code: {code}\nCheck that this is the intended office computer."),
     "devices_none": ("Nessun altro PC registrato.", "No hay otros equipos registrados.", "No other computers registered."),
     "device_pending": ("In attesa", "Pendiente", "Pending"),

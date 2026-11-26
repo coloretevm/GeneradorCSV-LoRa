@@ -163,6 +163,9 @@ class GuidedTests(unittest.TestCase):
                         with open(csv_path, encoding="utf-8", newline="") as stream:
                             row = next(csv.DictReader(stream, delimiter=";"))
                         self.assertEqual(row["Model"], "297" if product == "LORACONT" else "210")
+                        self.assertEqual(row["childnumber"], "0" if product == "LORACONT" else "1")
+                        expected_group = api.FIXED_COUNTER_GROUP if product == "LORACONT" else api.FIXED_GROUP
+                        self.assertEqual(row["Group"], expected_group)
                     if action in ("project", "json"):
                         folder = result["files"][1] if action == "project" else result["files"][0]
                         data = json.loads(next(Path(folder).glob("*.JSON")).read_text())

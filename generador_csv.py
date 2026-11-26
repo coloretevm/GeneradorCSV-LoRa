@@ -28,8 +28,8 @@ from device_manager_updater import (
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-APP_VERSION = "1.134"
-APP_BUILD_NAME = "Device_Manager_v133"
+APP_VERSION = "1.135"
+APP_BUILD_NAME = "Device_Manager_v135"
 SERIAL_ADMIN_PASSWORD = "Tecnidro2024!"
 UPDATE_SETTINGS_FILE = "update_settings.json"
 SERIAL_SETTINGS_FILE = "serial_registry_settings.json"
@@ -1666,6 +1666,14 @@ FIXED_APP_EUI = "665544332211AABB"
 FIXED_AUTH    = "ABP"
 FIXED_CLASS   = "A"
 FIXED_GROUP   = "_addon_hydronet_valve"
+FIXED_COUNTER_GROUP = "_addon_hydronet_counter"
+
+
+def _csv_group(device_kind):
+    """Return the Hydronet group required by the ResIOT CSV importer."""
+    if str(device_kind).strip().lower() == "loracont":
+        return FIXED_COUNTER_GROUP
+    return FIXED_GROUP
 
 def _resource_path(rel):
     try:
@@ -2175,7 +2183,7 @@ class CSVTab(ctk.CTkScrollableFrame):
                 de = format(deveui_int+i,"016X"); da = de[-8:]
                 rows.append([nm,model,FIXED_APP_EUI,de,FIXED_AUTH,"",da,
                               new_skey,app_skey,FIXED_CLASS,latitude,longitude,tag,
-                              "",alias,FIXED_GROUP,"","",childnumber,devstatusreq])
+                              "",alias,_csv_group(self._device_kind),"","",childnumber,devstatusreq])
             with open(output_file,"w",newline="",encoding="utf-8") as f:
                 w = csv.writer(f, delimiter=";"); w.writerow(header); w.writerows(rows)
             if not getattr(self, "_guided_mode", False):
@@ -3461,7 +3469,7 @@ class ProjectTab(ctk.CTkScrollableFrame):
                 devices.append({'name': nm, 'dev_eui': de, 'dev_addr': da})
                 rows.append([nm, model, FIXED_APP_EUI, de, FIXED_AUTH, "", da,
                               new_skey, app_skey, FIXED_CLASS, lat, lon, "",
-                              "", "", FIXED_GROUP, "", "", project_childnumber, "0"])
+                              "", "", _csv_group(label_opt), "", "", project_childnumber, "0"])
             with open(csv_path, "w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f, delimiter=";")
                 w.writerow(hdr); w.writerows(rows)

@@ -1,7 +1,7 @@
 {
-  "version": "1.134",
-  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v134.exe",
-  "sha256": "8118054726831d785c9d0d67e6a82f67393d3dda8b43d4e24654288315d3b8c4",
-  "size": 61351424,
-  "notes": "TIC12: sei firmware 03.02.05 AC, DC e BLE in PROD e DEBUG, con le versioni precedenti conservate. Avvio rapido e registro seriali senza token incorporato. Autorizzare i nuovi PC da Impostazioni > Computer autorizzati."
+  "version": "1.135",
+  "url": "https://raw.githubusercontent.com/coloretevm/GeneradorCSV-LoRa/main/downloads/Device_Manager_v135.exe",
+  "sha256": "9e872d9862f553172662b8dd51f312339a84e84cbe5e6e26f3b6850996a55a28",
+  "size": 61353984,
+  "notes": "LORACONT: CSV e progetto completo usano _addon_hydronet_counter, modello 297 e childnumber 0. Le RTU mantengono _addon_hydronet_valve. Migliorato il riconoscimento dei PC gia autorizzati."
 }

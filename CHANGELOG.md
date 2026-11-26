@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.135 - 26/11/2026
+
+- I CSV LORACONT, inclusi quelli creati dal progetto completo, usano il gruppo `_addon_hydronet_counter`; le RTU continuano a usare `_addon_hydronet_valve`.
+- LORACONT mantiene modello 297, `childnumber` 0 e `numvalves` 0; RTU mantiene modello 210 e la configurazione valvole selezionata.
+- Il servizio seriali prova prima l'identita gia autorizzata, evitando nuove registrazioni inutili dopo un aggiornamento.
+- La scheda Computer autorizzati mostra il codice del PC amministratore verificato e gli errori senza bloccare la finestra.
+- Superati 80 test automatici e la prova di avvio offline del binario con sei prodotti e anteprima PDF.
+
 ## 1.134 - 09/11/2026
 
 - Aggiunti sei firmware TIC12 03.02.05: AC selettori, DC selettori e BLE, in variante PROD e DEBUG.

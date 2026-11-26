@@ -1,6 +1,6 @@
-# Device Manager v134 - Portable Cache
+# Device Manager v135 - Portable Cache
 
-The user receives only `Device_Manager_v134.exe`. There is no installer, elevation,
+The user receives only `Device_Manager_v135.exe`. There is no installer, elevation,
 additional resource download, or Python installation on the target Windows PC.
 The small launcher uses the Windows .NET Framework and embeds the full application.
 
@@ -29,8 +29,8 @@ The cached core is not mistaken for the executable to replace.
 
 ```powershell
 python -m pip install -r requirements_device_manager.txt
-python -m PyInstaller --noconfirm --distpath dist/v134_core --workpath build/Device_Manager_v134 Device_Manager_v134.spec
-python portable_launcher/build_portable.py dist/v134_core/Device_Manager_Core dist/v134_final/Device_Manager_v134.exe
+python -m PyInstaller --noconfirm --distpath dist/v135_core --workpath build/Device_Manager_v135 Device_Manager_v135.spec
+python portable_launcher/build_portable.py dist/v135_core/Device_Manager_Core dist/v135_final/Device_Manager_v135.exe
 ```
 
 The directory build is an intermediate developer artifact, not a user deliverable.

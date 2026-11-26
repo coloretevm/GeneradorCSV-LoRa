@@ -1,8 +1,8 @@
 # Device Manager - TECNIDRO
 
-Ultimo eseguibile e codice pubblicati: **1.134** (09/11/2026).
+Ultimo eseguibile e codice pubblicati: **1.135** (26/11/2026).
 
-[Scarica Device_Manager_v134.exe](https://github.com/coloretevm/GeneradorCSV-LoRa/raw/refs/heads/main/downloads/Device_Manager_v134.exe)
+[Scarica Device_Manager_v135.exe](https://github.com/coloretevm/GeneradorCSV-LoRa/raw/refs/heads/main/downloads/Device_Manager_v135.exe)
 
 ## Aggiornamenti automatici
 
@@ -10,7 +10,13 @@ Dalla versione 1.125 il programma controlla gli aggiornamenti GitHub in backgrou
 
 Il manifest `update_manifest.json` contiene versione, URL del download, dimensione e checksum SHA-256. Ogni nuova pubblicazione deve aggiornare questo file insieme all'eseguibile. Non occorre un token per leggere il manifest o scaricare gli aggiornamenti pubblici.
 
-Le versioni compatibili rilevano la v134 se il controllo aggiornamenti e attivo. In alternativa, usa Impostazioni > Lingua e aggiornamenti > Controlla aggiornamenti, oppure scarica direttamente l'EXE.
+Le versioni compatibili rilevano la v135 se il controllo aggiornamenti e attivo. In alternativa, usa Impostazioni > Lingua e aggiornamenti > Controlla aggiornamenti, oppure scarica direttamente l'EXE.
+
+## Novita v135
+
+I CSV LORACONT usano ora il gruppo `_addon_hydronet_counter`, sia nella generazione CSV separata sia nel progetto completo. LORACONT mantiene modello 297, `childnumber` 0 e nessuna valvola; le RTU continuano a usare `_addon_hydronet_valve`.
+
+Il riconoscimento dei PC gia autorizzati e stato reso piu stabile dopo gli aggiornamenti. In Impostazioni > Computer autorizzati viene mostrato il codice del PC amministratore verificato.
 
 ## Novita v134
 

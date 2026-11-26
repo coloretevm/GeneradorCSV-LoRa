@@ -52,22 +52,26 @@ class NoRedirect(request.HTTPRedirectHandler):
 
 
 class ServiceClient:
-    def __init__(self, origin=SERVICE_URL, helper=None):
+    def __init__(self, origin=SERVICE_URL, helper=None, *, existing_only=False):
         parts = parse.urlsplit(origin)
         if (parts.scheme != "https" or not parts.hostname or parts.path not in ("", "/")
                 or parts.username or parts.password or parts.query or parts.fragment):
             raise ValueError("Invalid private service URL")
         self.origin = origin.rstrip("/")
         root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-        self.helper = Path(helper) if helper else root / ("DeviceIdentity.exe" if getattr(sys, "frozen", False)
-                                                        else ".build-tools/bin/DeviceIdentity.exe")
-        self.identity = self._identity("identity")
+        self.helper = (Path(helper) if helper else root / ("DeviceIdentity.exe" if getattr(sys, "frozen", False)
+                                                         else ".build-tools/bin/DeviceIdentity.exe")).resolve()
+        self.local_appdata = os.environ.get("LOCALAPPDATA")
+        self.identity = self._identity("identity-existing" if existing_only else "identity")
         self.admin = False
         self.approved = False
 
     def _identity(self, operation, **kwargs):
-        process = subprocess.run([str(self.helper)], input=json.dumps({"origin": self.origin,
-                                 "operation": operation, **kwargs}), text=True, capture_output=True,
+        payload = {"origin": self.origin, "operation": operation, **kwargs}
+        if self.local_appdata:
+            payload["local_appdata"] = self.local_appdata
+        process = subprocess.run([str(self.helper)], input=json.dumps(payload),
+                                 cwd=self.helper.parent, text=True, capture_output=True,
                                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), timeout=40)
         if process.returncode != 0:
             raise ServiceFailure("device_identity_unavailable")
@@ -83,7 +87,7 @@ class ServiceClient:
         signed = self._identity("sign", message=message)
         if signed["id"] != self.identity["id"]:
             raise ServiceFailure("device_identity_changed")
-        headers = {"Content-Type": "application/json", "User-Agent": "Tecnidro-Device-Manager/1.133",
+        headers = {"Content-Type": "application/json", "User-Agent": "Tecnidro-Device-Manager/1.135",
                    "X-Device-ID": self.identity["id"],
                    "X-Device-Time": timestamp, "X-Device-Nonce": nonce, "X-Device-Signature": signed["signature"]}
         req = request.Request(self.origin + path, data=body if data is not None else None,
@@ -107,7 +111,16 @@ class ServiceClient:
         self.approved = True
 
     def fetch(self):
-        self.enroll()
+        if not self.approved:
+            try:
+                registry = self.call("GET", "/v1/registry")
+            except ServiceFailure as exc:
+                if exc.code != "device_not_approved":
+                    raise
+                self.enroll()
+            else:
+                self.approved = True
+                return registry
         return self.call("GET", "/v1/registry")
 
     def save(self, registry):
@@ -121,7 +134,9 @@ class ServiceClient:
                 if attempt: raise
 
     def devices(self):
-        return self.call("GET", "/v1/admin/devices")["devices"]
+        devices = self.call("GET", "/v1/admin/devices")["devices"]
+        self.admin = self.approved = True
+        return devices
 
     def approve(self, device_id):
         return self.call("POST", "/v1/admin/devices", {"id": device_id, "status": "approved"})

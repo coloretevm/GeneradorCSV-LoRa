@@ -55,10 +55,31 @@ class ServiceTests(unittest.TestCase):
 
     def test_pending_device_does_not_fetch_registry(self):
         client = self.client()
-        with patch.object(client, "call", return_value={"status": "pending"}) as called, self.assertRaises(service.ServiceFailure):
+        responses = [service.ServiceFailure("device_not_approved"), {"status": "pending"}]
+        with patch.object(client, "call", side_effect=responses) as called, self.assertRaises(service.ServiceFailure):
             client.fetch()
-        self.assertEqual(called.call_count, 1)
+        self.assertEqual([call.args for call in called.call_args_list],
+                         [("GET", "/v1/registry"), ("POST", "/v1/enroll", {"jwk": {}, "label": service.os.environ.get("COMPUTERNAME", "Device Manager PC")})])
         self.assertFalse(client.approved)
+
+    def test_existing_approval_fetches_without_enrolling(self):
+        client = self.client()
+        with patch.object(client, "call", return_value={"families": {}}) as called:
+            self.assertEqual(client.fetch(), {"families": {}})
+        called.assert_called_once_with("GET", "/v1/registry")
+        self.assertTrue(client.approved)
+
+    def test_admin_list_confirms_role_without_enrolling(self):
+        client = self.client()
+        with patch.object(client, "call", return_value={"devices": []}) as called:
+            self.assertEqual(client.devices(), [])
+        called.assert_called_once_with("GET", "/v1/admin/devices")
+        self.assertTrue(client.admin)
+
+    def test_existing_identity_probe_never_requests_creation(self):
+        with patch.object(service.ServiceClient, "_identity", return_value={"id": "a" * 64}) as helper:
+            service.ServiceClient(existing_only=True)
+        helper.assert_called_once_with("identity-existing")
 
     def test_approval_is_cached_but_requests_remain_signed(self):
         client = self.client()

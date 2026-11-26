@@ -779,6 +779,8 @@ class GuidedApp:
                 self.devices_help.pack(anchor="w", padx=16, pady=16)
                 self.devices_refresh_button = self.button(target, self.tr("refresh_devices"), self.refresh_devices)
                 self.devices_refresh_button.pack(anchor="w", padx=16, pady=(0, 12))
+                self.devices_status = self.label(target, "", size=12, color=GREEN)
+                self.devices_status.pack(anchor="w", padx=16, pady=(0, 8))
                 self.devices_list = ctk.CTkScrollableFrame(target, fg_color="transparent", label_text="")
                 self.devices_list.pack(fill="both", expand=True, padx=10, pady=10)
                 self.device_refreshing = False
@@ -804,7 +806,8 @@ class GuidedApp:
         self.device_refreshing = True
         def work():
             try:
-                self.events.put(("devices", self.api._serial_service_client().devices()))
+                client = self.api._serial_service_client()
+                self.events.put(("devices", (client.devices(), client.identity["id"][:12])))
             except Exception as exc:
                 self.events.put(("device_error", exc))
         threading.Thread(target=work, daemon=True).start()
@@ -831,7 +834,7 @@ class GuidedApp:
             try:
                 client = self.api._serial_service_client()
                 client.approve(device["id"])
-                self.events.put(("devices", client.devices()))
+                self.events.put(("devices", (client.devices(), client.identity["id"][:12])))
             except Exception as exc:
                 self.events.put(("device_error", exc))
         threading.Thread(target=work, daemon=True).start()
@@ -923,11 +926,15 @@ class GuidedApp:
                     self.sync_running = False
                 if event == "devices":
                     self.device_refreshing = False
-                    self.render_devices(data)
+                    devices, code = data
+                    self.devices_status.configure(text=self.tr("device_admin_verified").format(code=code), text_color=GREEN)
+                    self.render_devices(devices)
                 elif event == "device_error":
                     self.device_refreshing = False
                     self.device_rows = []
-                    messagebox.showerror("Device Manager", str(data), parent=self.root)
+                    for child in self.devices_list.winfo_children():
+                        child.destroy()
+                    self.devices_status.configure(text=str(data), text_color=RED)
                 elif event == "registry":
                     self.registry = data
                     self.connection.configure(text=self.tr("serial_ok"), text_color=GREEN)
